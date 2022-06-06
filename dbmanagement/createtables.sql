@@ -1,11 +1,10 @@
 
 CREATE TABLE users (
-    userid integer,
+    userid serial primary key,
     name varchar(90),
     username varchar(90),
     password varchar(90),
-    email varchar(90),
-    primary key (userid)
+    email varchar(90)
 );
 
 
