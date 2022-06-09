@@ -1,13 +1,28 @@
 import type { NextPage } from "next";
 import AuthContext from "./AuthContext";
 import { useRouter } from "next/router";
-import { useContext, useEffect } from "react";
-import Button from "react-bootstrap/button"
+import { useContext, useEffect, useState } from "react";
+import Button from "react-bootstrap/button";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { w3cwebsocket as W3CWebSocket } from "websocket";
+
+const client = new W3CWebSocket("ws://localhost:8080/play")
 
 const Game: NextPage = () => {
   const router = useRouter();
   const { userInfo, setUserInfo } = useContext(AuthContext);
+  const [messages, setMessages] = useState<string[]>([]);
+
+  useEffect(() => {
+    const myID = -1;
+    client.onopen = () => {
+      console.log("opened") 
+    }
+    client.onmessage = (message:string) => {
+      console.log(message) 
+    }
+
+  });
 
   useEffect(() => {
     if (!userInfo) {
@@ -34,6 +49,11 @@ const Game: NextPage = () => {
       <Button variant="primary" type="submit" size="lg">
         Join Game
       </Button>
+      <div>
+        {messages.map((ele) => (
+          <p>{ele}</p>
+        ))}
+      </div>
     </div>
   );
 };

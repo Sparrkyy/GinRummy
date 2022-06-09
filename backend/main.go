@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	//"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -225,14 +226,28 @@ func main() {
   mrouter.HandleConnect(func (s *melody.Session) {
     lock.Lock();
     for _, info := range players {
-      s.Write([]byte("id " + info.ID))
+      s.Write([]byte("otherplayer " + info.ID))
     }
     players[s] = &PlayerInfo{ strconv.Itoa(counter) }
+    s.Write([]byte("iam " + players[s].ID));
     counter++;
     lock.Unlock();
   })
 
+  mrouter.HandleDisconnect(func (s *melody.Session) {
+    lock.Lock()
+    mrouter.BroadcastOthers([]byte("disconnect " + players[s].ID), s)
+    delete(players, s);
+    lock.Unlock()
+  })
 
+  mrouter.HandleMessage(func (s*melody.Session, msg []byte){
+    //p := strings.Split(string(msg), " ");
+    lock.Lock()
+    //info = players[s];
+    mrouter.BroadcastOthers([]byte("message"), s);
+    lock.Unlock();
+  })
 
 	router.Use(cors.Default())
 	router.POST("/login", loginEndpoint)
