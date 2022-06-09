@@ -205,6 +205,7 @@ func validateAndDecryptJWT(tokenString string) (string, string, error) {
 
 type PlayerInfo struct{
   ID string;
+  URL string;
 }
 
 
@@ -219,33 +220,43 @@ func main() {
   lock := new(sync.Mutex)
   counter := 0
 
-  router.GET("/play", func (c *gin.Context){
+  router.GET("/channel/:name/play", func (c *gin.Context){
     mrouter.HandleRequest(c.Writer, c.Request);
   })
 
-  mrouter.HandleConnect(func (s *melody.Session) {
+  mrouter.HandleConnect(func (s *melody.Session) { 
     lock.Lock();
     for _, info := range players {
-      s.Write([]byte("otherplayer " + info.ID))
+      if s.Request.URL.Path == info.URL {
+        s.Write([]byte("otherplayer " + info.ID))
+      }
     }
-    players[s] = &PlayerInfo{ strconv.Itoa(counter) }
-    s.Write([]byte("iam " + players[s].ID));
+    players[s] = &PlayerInfo{ ID: strconv.Itoa(counter), URL: s.Request.URL.Path }
+    s.Write([]byte("iam " + players[s].ID + " " + players[s].URL));
     counter++;
+    //Telling othplayers who just joined
+    msg:= []byte("otherplayer " + players[s].ID)
+    mrouter.BroadcastFilter(msg, func(q *melody.Session) bool {
+			return q.Request.URL.Path == s.Request.URL.Path
+		})
     lock.Unlock();
   })
 
   mrouter.HandleDisconnect(func (s *melody.Session) {
     lock.Lock()
-    mrouter.BroadcastOthers([]byte("disconnect " + players[s].ID), s)
+    msg := []byte("disconnect " + players[s].ID) 
+    mrouter.BroadcastFilter(msg, func(q *melody.Session) bool {
+			return q.Request.URL.Path == s.Request.URL.Path
+		})
     delete(players, s);
     lock.Unlock()
   })
 
   mrouter.HandleMessage(func (s*melody.Session, msg []byte){
-    //p := strings.Split(string(msg), " ");
     lock.Lock()
-    //info = players[s];
-    mrouter.BroadcastOthers([]byte("message"), s);
+    mrouter.BroadcastFilter(msg, func(q *melody.Session) bool {
+			return q.Request.URL.Path == s.Request.URL.Path
+		})
     lock.Unlock();
   })
 
