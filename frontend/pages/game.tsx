@@ -6,23 +6,22 @@ import Button from "react-bootstrap/button";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { w3cwebsocket as W3CWebSocket } from "websocket";
 
-const client = new W3CWebSocket("ws://localhost:8080/play")
-
 const Game: NextPage = () => {
   const router = useRouter();
   const { userInfo, setUserInfo } = useContext(AuthContext);
   const [messages, setMessages] = useState<string[]>([]);
+  const [inGame, setInGame] = useState<boolean>(false);
 
-  useEffect(() => {
-    const myID = -1;
+  const joinGame = () => {
+    const client = new W3CWebSocket("ws://localhost:8080/play");
     client.onopen = () => {
-      console.log("opened") 
-    }
-    client.onmessage = (message:string) => {
-      console.log(message) 
-    }
-
-  });
+      console.log("opened");
+      setInGame(true);
+    };
+    client.onmessage = (message: { data: string }) => {
+      setMessages((prev) => [...prev, message.data]);
+    };
+  };
 
   useEffect(() => {
     if (!userInfo) {
@@ -46,12 +45,19 @@ const Game: NextPage = () => {
       >
         GAME LOBBY
       </h1>
-      <Button variant="primary" type="submit" size="lg">
-        Join Game
-      </Button>
+      {!inGame && (
+        <Button
+          variant="primary"
+          type="submit"
+          size="lg"
+          onClick={() => joinGame()}
+        >
+          Join Game
+        </Button>
+      )}
       <div>
         {messages.map((ele) => (
-          <p>{ele}</p>
+          <p key={ele}>{ele}</p>
         ))}
       </div>
     </div>
