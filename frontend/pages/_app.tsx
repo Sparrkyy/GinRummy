@@ -1,10 +1,7 @@
 import "../styles/globals.css";
 import type { AppProps } from "next/app";
 import { useState } from "react";
-import { createContext } from "react";
-import type { SetStateAction, Dispatch} from "react"
-
-const AuthContext = createContext<{ userInfo: String | null; setUserInfo: Dispatch<SetStateAction<String | null>>; }|null>(null);
+import AuthContext from './AuthContext'
 
 function MyApp({ Component, pageProps }: AppProps) {
   const [userInfo, setUserInfo] = useState<String | null>(null);

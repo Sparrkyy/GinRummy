@@ -4,13 +4,21 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
-	"net/http"
-	"time"
+
+	//"strconv"
+	//"strings"
+	"sync"
+
+	"gopkg.in/olahol/melody.v1"
 )
 
 var connStr = "postgres://ethan:password@localhost/ginrummy?sslmode=disable"
@@ -104,7 +112,7 @@ func signupEndpoint(c *gin.Context) {
 }
 
 type loginEndpointInput struct {
-    Username string `json:"username" binding:"required"`
+	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
 
@@ -113,13 +121,13 @@ type jwtResponse struct {
 }
 
 type errorResponse struct {
-    Error string `json:"error"`
+	Error string `json:"error"`
 }
 
 func loginEndpoint(c *gin.Context) {
 	var input loginEndpointInput
 	if err := c.ShouldBindJSON(&input); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	rows, err := DB.Query("select email, password from users where username = $1", input.Username)
@@ -128,7 +136,7 @@ func loginEndpoint(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-    
+
 	defer rows.Close()
 	for rows.Next() {
 		var hashedpassword string
@@ -142,19 +150,19 @@ func loginEndpoint(c *gin.Context) {
 		if CheckPasswordHash(input.Password, hashedpassword) {
 			newJWT, err := getJWT(input.Username, email)
 			if err != nil {
-				c.JSON(http.StatusBadRequest,gin.H{"error": err.Error()})
+				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
 			}
 			c.JSON(http.StatusOK, jwtResponse{JWT: newJWT})
 			return
 		} else {
-			c.JSON(http.StatusBadRequest,gin.H{"error": "Authenication failed"} )
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Authenication failed"})
 			return
 		}
 	}
-    fmt.Println("Authenication Failed by returning no rows");
-    c.JSON(http.StatusBadRequest, gin.H{"error": "Authenication Failed, Code 100"});
-    return 
+	fmt.Println("Authenication Failed by returning no rows")
+	c.JSON(http.StatusBadRequest, gin.H{"error": "Authenication Failed, Code 100"})
+	return
 }
 
 func intilizeJWTSecret() {
@@ -194,11 +202,38 @@ func validateAndDecryptJWT(tokenString string) (string, string, error) {
 
 }
 
+type PlayerInfo struct{
+  ID string;
+}
+
+
+
 func main() {
 	intilizeJWTSecret()
 	intializeDB()
 	defer DB.Close()
 	router := gin.Default()
+  mrouter := melody.New();
+  players := make(map[*melody.Session]*PlayerInfo)
+  lock := new(sync.Mutex)
+  counter := 0
+
+  router.GET("/play", func (c *gin.Context){
+    mrouter.HandleRequest(c.Writer, c.Request);
+  })
+
+  mrouter.HandleConnect(func (s *melody.Session) {
+    lock.Lock();
+    for _, info := range players {
+      s.Write([]byte("id " + info.ID))
+    }
+    players[s] = &PlayerInfo{ strconv.Itoa(counter) }
+    counter++;
+    lock.Unlock();
+  })
+
+
+
 	router.Use(cors.Default())
 	router.POST("/login", loginEndpoint)
 	router.POST("/signup", signupEndpoint)
