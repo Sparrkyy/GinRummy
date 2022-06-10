@@ -4,16 +4,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net/http"
-	"strconv"
-	//"strings"
-	"time"
-
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	_ "github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
 	//"strconv"
 	//"strings"
@@ -58,18 +57,34 @@ const (
 	King       = 13
 )
 
+var Ranks = []Rank{Ace, Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten, Jack, Queen, King}
+var Suits = []Suit{Spades, Clubs, Hearts, Diamonds}
+
 type Card struct {
 	rank Rank
 	suit Suit
 }
 
+func makeDeck() *[52]Card {
+	var Deck [52]Card
+	for i, suit := range Suits {
+		for j, rank := range Ranks {
+			thisCard := new(Card)
+			thisCard.rank = rank
+			thisCard.suit = suit
+			Deck[i*j] = *thisCard
+		}
+	}
+	return &Deck
+}
+
 type Game struct {
 	Player1     PlayerInfo
 	Player2     PlayerInfo
-	Deck        []Card
-	Player1hand []Card
-	Player2hand []Card
-	DiscardPile []Card
+	Deck        *[52]Card
+	Player1hand *[]Card
+	Player2hand *[]Card
+	DiscardPile *[]Card
 }
 
 func intializeDB() {
@@ -245,8 +260,9 @@ func handleWSchannel(c *gin.Context) {
 }
 
 type PlayerInfo struct {
-	ID  int
-	URL string
+	ID       int
+	URL      string
+	GameRoom string
 }
 
 func connectToGame(s *melody.Session) {
@@ -256,14 +272,47 @@ func connectToGame(s *melody.Session) {
 			s.Write([]byte("otherplayer " + strconv.Itoa(info.ID)))
 		}
 	}
-	PLAYERS[s] = &PlayerInfo{ID: IDCOUNTER, URL: s.Request.URL.Path}
+
+	gameRoomName := strings.Split(s.Request.URL.Path, "/")[2]
+	PLAYERS[s] = &PlayerInfo{ID: IDCOUNTER, URL: s.Request.URL.Path, GameRoom: gameRoomName}
 	s.Write([]byte("iam " + strconv.Itoa(PLAYERS[s].ID) + " " + PLAYERS[s].URL))
 	IDCOUNTER++
-	//Telling othPLAYERS who just joined
+
+	//Telling other players who just joined
 	msg := []byte("otherplayer " + strconv.Itoa(PLAYERS[s].ID))
 	MROUTER.BroadcastFilter(msg, func(q *melody.Session) bool {
 		return q.Request.URL.Path == s.Request.URL.Path
 	})
+
+	//Putting Player into a room
+	gameRoomStatus := getGameRoomStatus(gameRoomName)
+	if gameRoomStatus == "nonexistent" {
+		GAMES[gameRoomName] = &Game{Player1: *PLAYERS[s], Deck: makeDeck()}
+		fmt.Println(GAMES[gameRoomName])
+		msg = []byte("(Game room created) " + "(room name: " + gameRoomName + ") (player1 name: " + strconv.Itoa(GAMES[gameRoomName].Player1.ID) + ") (player2 name: " + strconv.Itoa(GAMES[gameRoomName].Player2.ID) + " )")
+		MROUTER.BroadcastFilter(msg, func(q *melody.Session) bool {
+			return q.Request.URL.Path == s.Request.URL.Path
+		})
+	} else {
+
+		if GAMES[gameRoomName].Player1.ID == 0 {
+			GAMES[gameRoomName].Player1 = *PLAYERS[s]
+		  msg = []byte("(Game room joined) " + "(room name: " + gameRoomName + ") (player1 name: " + strconv.Itoa(GAMES[gameRoomName].Player1.ID) + ") (player2 name: " + strconv.Itoa(GAMES[gameRoomName].Player2.ID) + " )")
+      MROUTER.BroadcastFilter(msg, func(q *melody.Session) bool {
+        return q.Request.URL.Path == s.Request.URL.Path
+      })
+		} else if GAMES[gameRoomName].Player2.ID == 0 {
+			GAMES[gameRoomName].Player2 = *PLAYERS[s]
+		  msg = []byte("(Game room joined) " + "(room name: " + gameRoomName + ") (player1 name: " + strconv.Itoa(GAMES[gameRoomName].Player1.ID) + ") (player2 name: " + strconv.Itoa(GAMES[gameRoomName].Player2.ID) + " )")
+      MROUTER.BroadcastFilter(msg, func(q *melody.Session) bool {
+        return q.Request.URL.Path == s.Request.URL.Path
+      })
+		} else {
+			fmt.Println("Error: the room was full when we tried to join")
+		}
+
+	}
+
 	LOCK.Unlock()
 }
 
@@ -305,20 +354,18 @@ func gameRoomQuery(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, "Failed: incorrect input")
 		return
 	}
+	c.JSON(http.StatusOK, gin.H{"gameroomstatus": getGameRoomStatus(input.GameName)})
+}
 
-	thisGame, present := GAMES[input.GameName]
-
+func getGameRoomStatus(val string) string {
+	thisGame, present := GAMES[val]
 	if !present {
-		c.JSON(http.StatusOK, gin.H{"gameroomstatus": "nonexistent"})
-		return
+		return "nonexistent"
 	}
-
 	if thisGame.Player1.ID == 0 || thisGame.Player2.ID == 0 {
-		c.JSON(http.StatusOK, gin.H{"gameroomstatus": "freespot"})
-		return
+		return "freespot"
 	}
-
-	c.JSON(http.StatusOK, gin.H{"gameroomstatus": "filled"})
+	return "filled"
 }
 
 func main() {

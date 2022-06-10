@@ -6,7 +6,6 @@ import Button from "react-bootstrap/button";
 import Form from "react-bootstrap/Form";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { w3cwebsocket as W3CWebSocket } from "websocket";
-import type { ChangeEventHandler } from "react";
 
 interface websocket {
   onopen:Function,
@@ -35,7 +34,6 @@ const Game: NextPage = () => {
     client.onmessage = (message: { data: string }) => {
       setMessages((prev) => [...prev, message.data]);
     };
-
     
   };
 
@@ -80,7 +78,7 @@ const Game: NextPage = () => {
           </Button>
         </Form>
       )}
-      {inGame && <h1>{roomName.current}</h1>}
+      {inGame && <h1 style={{fontWeight:900, fontSize: "2rem"}}>{roomName.current}</h1>}
       <div>
         {messages.map((ele) => (
           <p key={ele}>{ele}</p>
