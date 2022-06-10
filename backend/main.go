@@ -22,12 +22,58 @@ import (
 	"gopkg.in/olahol/melody.v1"
 )
 
-var connStr = "postgres://ethan:password@localhost/ginrummy?sslmode=disable"
+var CONNSTR = "postgres://ethan:password@localhost/ginrummy?sslmode=disable"
 var hmacSampleSecret []byte
 var DB *sql.DB
+var MROUTER *melody.Melody
+var LOCK *sync.Mutex
+var PLAYERS map[*melody.Session]*PlayerInfo
+var IDCOUNTER int
+var GAMES map[string]*Game
+
+type Suit int
+
+const (
+	Spades Suit = iota
+	Clubs
+	Hearts
+	Diamonds
+)
+
+type Rank int
+
+const (
+	Ace   Rank = 1
+	Two        = 2
+	Three      = 3
+	Four       = 4
+	Five       = 5
+	Six        = 6
+	Seven      = 7
+	Eight      = 8
+	Nine       = 9
+	Ten        = 10
+	Jack       = 11
+	Queen      = 12
+	King       = 13
+)
+
+type Card struct {
+	rank Rank
+	suit Suit
+}
+
+type Game struct {
+	Player1     PlayerInfo
+	Player2     PlayerInfo
+	Deck        []Card
+	Player1hand []Card
+	Player2hand []Card
+	DiscardPile []Card
+}
 
 func intializeDB() {
-	db, err := sql.Open("postgres", connStr)
+	db, err := sql.Open("postgres", CONNSTR)
 	if err != nil {
 		fmt.Println("ERROR!! Database failed to intilize")
 		return
@@ -117,14 +163,6 @@ type loginEndpointInput struct {
 	Password string `json:"password" binding:"required"`
 }
 
-type jwtResponse struct {
-	JWT string `json:"jwt"`
-}
-
-type errorResponse struct {
-	Error string `json:"error"`
-}
-
 func loginEndpoint(c *gin.Context) {
 	var input loginEndpointInput
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -154,7 +192,7 @@ func loginEndpoint(c *gin.Context) {
 				c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 				return
 			}
-			c.JSON(http.StatusOK, jwtResponse{JWT: newJWT})
+			c.JSON(http.StatusOK, gin.H{"jwt": newJWT})
 			return
 		} else {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Authenication failed"})
@@ -202,66 +240,100 @@ func validateAndDecryptJWT(tokenString string) (string, string, error) {
 	}
 
 }
-
-type PlayerInfo struct{
-  ID string;
-  URL string;
+func handleWSchannel(c *gin.Context) {
+	MROUTER.HandleRequest(c.Writer, c.Request)
 }
 
+type PlayerInfo struct {
+	ID  int
+	URL string
+}
 
+func connectToGame(s *melody.Session) {
+	LOCK.Lock()
+	for _, info := range PLAYERS {
+		if s.Request.URL.Path == info.URL {
+			s.Write([]byte("otherplayer " + strconv.Itoa(info.ID)))
+		}
+	}
+	PLAYERS[s] = &PlayerInfo{ID: IDCOUNTER, URL: s.Request.URL.Path}
+	s.Write([]byte("iam " + strconv.Itoa(PLAYERS[s].ID) + " " + PLAYERS[s].URL))
+	IDCOUNTER++
+	//Telling othPLAYERS who just joined
+	msg := []byte("otherplayer " + strconv.Itoa(PLAYERS[s].ID))
+	MROUTER.BroadcastFilter(msg, func(q *melody.Session) bool {
+		return q.Request.URL.Path == s.Request.URL.Path
+	})
+	LOCK.Unlock()
+}
+
+func leaveGame(s *melody.Session) {
+	LOCK.Lock()
+	msg := []byte("disconnect " + strconv.Itoa(PLAYERS[s].ID))
+	MROUTER.BroadcastFilter(msg, func(q *melody.Session) bool {
+		return q.Request.URL.Path == s.Request.URL.Path
+	})
+	delete(PLAYERS, s)
+	LOCK.Unlock()
+}
+
+func handleGameMoves(s *melody.Session, msg []byte) {
+	LOCK.Lock()
+	MROUTER.BroadcastFilter(msg, func(q *melody.Session) bool {
+		return q.Request.URL.Path == s.Request.URL.Path
+	})
+	LOCK.Unlock()
+}
+
+func intializeWSvars() {
+	MROUTER = melody.New()
+	PLAYERS = make(map[*melody.Session]*PlayerInfo)
+	LOCK = new(sync.Mutex)
+	IDCOUNTER = 1
+	GAMES = make(map[string]*Game)
+}
+
+type gameQueryInput struct {
+	GameName string `json:"gameroom" binding:"required"`
+}
+
+func gameRoomQuery(c *gin.Context) {
+	var input gameQueryInput
+	err := c.ShouldBindJSON(&input)
+	if err != nil {
+		fmt.Println(err.Error())
+		c.JSON(http.StatusBadRequest, "Failed: incorrect input")
+		return
+	}
+
+	thisGame, present := GAMES[input.GameName]
+
+	if !present {
+		c.JSON(http.StatusOK, gin.H{"gameroomstatus": "nonexistent"})
+		return
+	}
+
+	if thisGame.Player1.ID == 0 || thisGame.Player2.ID == 0 {
+		c.JSON(http.StatusOK, gin.H{"gameroomstatus": "freespot"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"gameroomstatus": "filled"})
+}
 
 func main() {
 	intilizeJWTSecret()
 	intializeDB()
 	defer DB.Close()
+	intializeWSvars()
 	router := gin.Default()
-  mrouter := melody.New();
-  players := make(map[*melody.Session]*PlayerInfo)
-  lock := new(sync.Mutex)
-  counter := 0
-
-  router.GET("/channel/:name/play", func (c *gin.Context){
-    mrouter.HandleRequest(c.Writer, c.Request);
-  })
-
-  mrouter.HandleConnect(func (s *melody.Session) { 
-    lock.Lock();
-    for _, info := range players {
-      if s.Request.URL.Path == info.URL {
-        s.Write([]byte("otherplayer " + info.ID))
-      }
-    }
-    players[s] = &PlayerInfo{ ID: strconv.Itoa(counter), URL: s.Request.URL.Path }
-    s.Write([]byte("iam " + players[s].ID + " " + players[s].URL));
-    counter++;
-    //Telling othplayers who just joined
-    msg:= []byte("otherplayer " + players[s].ID)
-    mrouter.BroadcastFilter(msg, func(q *melody.Session) bool {
-			return q.Request.URL.Path == s.Request.URL.Path
-		})
-    lock.Unlock();
-  })
-
-  mrouter.HandleDisconnect(func (s *melody.Session) {
-    lock.Lock()
-    msg := []byte("disconnect " + players[s].ID) 
-    mrouter.BroadcastFilter(msg, func(q *melody.Session) bool {
-			return q.Request.URL.Path == s.Request.URL.Path
-		})
-    delete(players, s);
-    lock.Unlock()
-  })
-
-  mrouter.HandleMessage(func (s*melody.Session, msg []byte){
-    lock.Lock()
-    mrouter.BroadcastFilter(msg, func(q *melody.Session) bool {
-			return q.Request.URL.Path == s.Request.URL.Path
-		})
-    lock.Unlock();
-  })
-
+	router.GET("/channel/:name/play", handleWSchannel)
+	MROUTER.HandleConnect(connectToGame)
+	MROUTER.HandleDisconnect(leaveGame)
+	MROUTER.HandleMessage(handleGameMoves)
 	router.Use(cors.Default())
 	router.POST("/login", loginEndpoint)
 	router.POST("/signup", signupEndpoint)
+	router.GET("/gameRoomQuery", gameRoomQuery)
 	router.Run("localhost:8080")
 }
