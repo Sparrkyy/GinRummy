@@ -8,9 +8,9 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import { w3cwebsocket as W3CWebSocket } from "websocket";
 
 interface websocket {
-  onopen:Function,
-  onmessage:Function,
-  send: (val: string) => void,
+  onopen: Function;
+  onmessage: Function;
+  send: (val: string) => void;
 }
 
 const Game: NextPage = () => {
@@ -19,22 +19,24 @@ const Game: NextPage = () => {
   const [messages, setMessages] = useState<string[]>([]);
   const [inGame, setInGame] = useState<boolean>(false);
   const roomName = useRef<string | null>(null);
-  let client:websocket;
+  const client = useRef<websocket|null>(null);
 
   const joinGame = () => {
-    if (!roomName.current || roomName.current == ""){
+    if (!roomName.current || roomName.current == "") {
       return;
     }
-    client = new W3CWebSocket("ws://localhost:8080/channel/" + roomName.current + "/play");
-    client.onopen = () => {
-      console.log("opened");
-      setInGame(true);
-    };
-    
-    client.onmessage = (message: { data: string }) => {
-      setMessages((prev) => [...prev, message.data]);
-    };
-    
+    client.current = new W3CWebSocket(
+      "ws://localhost:8080/channel/" + roomName.current + "/play"
+    );
+    if (client.current !== null) {
+      client.current.onopen = () => {
+        setInGame(true);
+      };
+
+      client.current.onmessage = (message: { data: string }) => {
+        setMessages((prev) => [...prev, message.data]);
+      };
+    }
   };
 
   useEffect(() => {
@@ -78,7 +80,24 @@ const Game: NextPage = () => {
           </Button>
         </Form>
       )}
-      {inGame && <h1 style={{fontWeight:900, fontSize: "2rem"}}>{roomName.current}</h1>}
+      {inGame && (
+        <h1 style={{ fontWeight: 900, fontSize: "2rem" }}>
+          {roomName.current}
+        </h1>
+      )}
+      {inGame && (
+        <button
+          onClick={() => {
+            console.log("clicked")
+            if (client.current !== null) {
+              console.log("sent")
+              client.current.send("hello");
+            }
+          }}
+        >
+          Send Hello
+        </button>
+      )}
       <div>
         {messages.map((ele) => (
           <p key={ele}>{ele}</p>

@@ -13,11 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	//"strconv"
-	//"strings"
 	"sync"
-
 	"gopkg.in/olahol/melody.v1"
 )
 
@@ -56,6 +52,16 @@ const (
 	Queen      = 12
 	King       = 13
 )
+
+
+type GameRoomStatus string 
+
+const (
+  nonexistent GameRoomStatus = "nonexistent" 
+  freespot = "freespot"
+  filled = "filled"
+)
+
 
 var Ranks = []Rank{Ace, Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten, Jack, Queen, King}
 var Suits = []Suit{Spades, Clubs, Hearts, Diamonds}
@@ -287,37 +293,57 @@ func connectToGame(s *melody.Session) {
 	//Putting Player into a room
 	gameRoomStatus := getGameRoomStatus(gameRoomName)
 	if gameRoomStatus == "nonexistent" {
-		GAMES[gameRoomName] = &Game{Player1: *PLAYERS[s], Deck: makeDeck()}
-		fmt.Println(GAMES[gameRoomName])
-		msg = []byte("(Game room created) " + "(room name: " + gameRoomName + ") (player1 name: " + strconv.Itoa(GAMES[gameRoomName].Player1.ID) + ") (player2 name: " + strconv.Itoa(GAMES[gameRoomName].Player2.ID) + " )")
-		MROUTER.BroadcastFilter(msg, func(q *melody.Session) bool {
-			return q.Request.URL.Path == s.Request.URL.Path
-		})
+    Player1hand := new([]Card)
+    Player2hand := new([]Card)
+    DiscardPile := new([]Card)
+    GAMES[gameRoomName] = &Game{Player1: *PLAYERS[s], Deck: makeDeck(), Player1hand: Player1hand, Player2hand: Player2hand, DiscardPile: DiscardPile }
 	} else {
 
 		if GAMES[gameRoomName].Player1.ID == 0 {
 			GAMES[gameRoomName].Player1 = *PLAYERS[s]
-		  msg = []byte("(Game room joined) " + "(room name: " + gameRoomName + ") (player1 name: " + strconv.Itoa(GAMES[gameRoomName].Player1.ID) + ") (player2 name: " + strconv.Itoa(GAMES[gameRoomName].Player2.ID) + " )")
-      MROUTER.BroadcastFilter(msg, func(q *melody.Session) bool {
-        return q.Request.URL.Path == s.Request.URL.Path
-      })
 		} else if GAMES[gameRoomName].Player2.ID == 0 {
 			GAMES[gameRoomName].Player2 = *PLAYERS[s]
-		  msg = []byte("(Game room joined) " + "(room name: " + gameRoomName + ") (player1 name: " + strconv.Itoa(GAMES[gameRoomName].Player1.ID) + ") (player2 name: " + strconv.Itoa(GAMES[gameRoomName].Player2.ID) + " )")
-      MROUTER.BroadcastFilter(msg, func(q *melody.Session) bool {
-        return q.Request.URL.Path == s.Request.URL.Path
-      })
 		} else {
 			fmt.Println("Error: the room was full when we tried to join")
 		}
 
 	}
+  //now checking if the room is full or not 
+	gameRoomStatus = getGameRoomStatus(gameRoomName)
+  if gameRoomStatus == filled {
+		  msg = []byte("Game Room Filled")
+      MROUTER.BroadcastFilter(msg, func(q *melody.Session) bool {
+        return q.Request.URL.Path == s.Request.URL.Path
+      })
+  }
+
+
 
 	LOCK.Unlock()
 }
 
 func leaveGame(s *melody.Session) {
 	LOCK.Lock()
+
+  //removing player if they belong to a game 
+  successfulRemoval := false
+  for _, game := range GAMES {
+    if game.Player1.ID == PLAYERS[s].ID {
+      var newPlayer = new(PlayerInfo)
+      game.Player1 = *newPlayer 
+      successfulRemoval = true
+      break
+    }
+    if game.Player2.ID == PLAYERS[s].ID {
+      var newPlayer = new(PlayerInfo)
+      game.Player2 = *newPlayer 
+      successfulRemoval = true
+      break
+    }
+  }
+  if !successfulRemoval {
+    fmt.Println("Error: failure to remove player: " + strconv.Itoa(PLAYERS[s].ID));
+  }
 	msg := []byte("disconnect " + strconv.Itoa(PLAYERS[s].ID))
 	MROUTER.BroadcastFilter(msg, func(q *melody.Session) bool {
 		return q.Request.URL.Path == s.Request.URL.Path
@@ -357,16 +383,35 @@ func gameRoomQuery(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"gameroomstatus": getGameRoomStatus(input.GameName)})
 }
 
-func getGameRoomStatus(val string) string {
+
+func getGameRoomStatus(val string) GameRoomStatus {
 	thisGame, present := GAMES[val]
 	if !present {
-		return "nonexistent"
+		return nonexistent
 	}
 	if thisGame.Player1.ID == 0 || thisGame.Player2.ID == 0 {
-		return "freespot"
-	}
-	return "filled"
+		return  freespot
+ 	}
+	return filled 
 }
+
+
+/*
+Game Logic Ideas: 
+
+- We need a instruction set for the game 
+
+The Game needs to start when two players are in a room and stop when someone has disconnected. I need a formal langauge for this kinda 
+Possible moves:
+- every turn starts with a choice to knock or not (dpending on if you can) 
+- every turn then has to decide to pick a card from discard or from deck 
+- then the player moves around their cards and discards one ending their turn , they could also place that card upside down which could cause issues but heyik 
+
+First I have to sense when room is full pretty easy 
+
+Then I have to come up with different types of messages 
+
+*/
 
 func main() {
 	intilizeJWTSecret()
