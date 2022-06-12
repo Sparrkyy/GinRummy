@@ -56,10 +56,10 @@ func PopCardStack(a *[]Card) (Card, []Card){
 }
 
 func makeDeck() *[]Card {
-	var Deck []Card
+  Deck := *new([]Card)
 	for _, suit := range Suits {
 		for _, rank := range Ranks {
-			thisCard := Card{rank: rank, suit: suit}
+			thisCard := Card{Rank: rank, Suit: suit}
 			Deck = append(Deck, thisCard)
 		}
 	}
@@ -242,12 +242,14 @@ func connectToGame(s *melody.Session) {
 	//Putting Player into a room
 	gameRoomStatus := getGameRoomStatus(gameRoomName)
 	if gameRoomStatus == "nonexistent" {
-		Player1hand := new([]Card)
-		Player2hand := new([]Card)
-		DiscardPile := new([]Card)
-		GAMES[gameRoomName] = &Game{Player1: *PLAYERS[s], Deck: makeDeck(), Player1hand: Player1hand, Player2hand: Player2hand, DiscardPile: DiscardPile}
+    Deck := makeDeck()
+		Player1hand, Deck := MakeHand(Deck)
+		Player2hand, Deck := MakeHand(Deck)
+    var card Card
+    card, *Deck = PopCardStack(Deck)
+    DiscardPile := []Card{card}
+    GAMES[gameRoomName] = &Game{Name: PLAYERS[s].GameRoom, Turn: PLAYERS[s].ID, Player1: *PLAYERS[s], Deck: Deck, Player1hand: &Player1hand, Player2hand: &Player2hand, DiscardPile: &DiscardPile}
 	} else {
-
 		if GAMES[gameRoomName].Player1.ID == 0 {
 			GAMES[gameRoomName].Player1 = *PLAYERS[s]
 		} else if GAMES[gameRoomName].Player2.ID == 0 {
@@ -285,12 +287,18 @@ func leaveGame(s *melody.Session) {
 			var newPlayer = new(PlayerInfo)
 			game.Player1 = *newPlayer
 			successfulRemoval = true
+      if game.Player2.ID == 0 {
+        delete(GAMES, game.Name)
+      }
 			break
 		}
 		if game.Player2.ID == PLAYERS[s].ID {
 			var newPlayer = new(PlayerInfo)
 			game.Player2 = *newPlayer
 			successfulRemoval = true
+      if game.Player1.ID == 0 {
+        delete(GAMES, game.Name)
+      }
 			break
 		}
 	}

@@ -68,14 +68,31 @@ const test3_figureoutwhosturn = async () => {
     WS1.onmessage = (messageIn) => {
       let data = JSON.parse(messageIn.data);
       if (data["messagetype"] === "meta" && data["command"] === "iam") {
-        myID = data["content"];
+        myID = parseInt(data["content"])
       }
       if (
         data["messagetype"] === "meta" &&
         data["command"] === "gameroomstatus" &&
         data["content"] === "filled"
       ) {
-        console.log(data);
+        const gamedata = data.game;
+        if (gamedata.deck.length === 31 && gamedata.player1hand.length === 10 && gamedata.player2hand.length === 10){
+          console.log("Passed: All lenghts are correct")
+          console.log("MyID:", myID)
+          console.log("player1 info", gamedata.player1)
+          console.log("player2 info", gamedata.player2)
+          console.log("the players turn:", gamedata.turn)
+        }
+        else {
+          console.error("Failed: not the right number of cards", gamedata.deck.length, gamedata.player1hand.length, gamedata.player2hand.length)
+        }
+        if (gamedata.player1.id === myID && gamedata.turn === myID) {
+          console.log("Passed: my id is the same as the turn and the same as player1");
+          resolve()
+        } else {
+          console.error("Failed: not proper result", gamedata.player1.id, myID, gamedata.turn)
+          resolve()
+        }
       }
     };
   });

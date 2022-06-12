@@ -36,31 +36,41 @@ const (
 )
 
 type Card struct {
-	rank Rank
-	suit Suit
+	Rank Rank `json:"card"`
+	Suit Suit `json:"suit"`
 }
+
+type GameStatus string
+
+const (
+	Starting    = "starting"
+	BegTurn     = "begturn"
+	WaitDiscard = "waitdiscard"
+)
 
 type Game struct {
 	Turn        int        `json:"turn"`
 	Player1     PlayerInfo `json:"player1"`
 	Player2     PlayerInfo `json:"player2"`
-	Deck        *[]Card  `json:"deck"`
+	Deck        *[]Card    `json:"deck"`
 	Player1hand *[]Card    `json:"player1hand"`
 	Player2hand *[]Card    `json:"player2hand"`
 	DiscardPile *[]Card    `json:"discardpile"`
+	Status      GameStatus `json:"gamestatus"`
+  Name string `json:"name"`
 }
 
 type PlayerInfo struct {
-	ID       int
-	URL      string
-	GameRoom string
+	ID       int    `json:"id"`
+	URL      string `json:"url"`
+	GameRoom string `json:"gameroom"`
 }
 
 type WSMetaJSONFormat struct {
 	MessageType string `json:"messagetype"`
 	Command     string `json:"command"`
 	Content     string `json:"content"`
-  Game Game `json:"game"`
+	Game        Game   `json:"game"`
 }
 
 type gameQueryInput struct {
