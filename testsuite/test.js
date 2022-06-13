@@ -68,7 +68,7 @@ const test3_figureoutwhosturn = async () => {
     WS1.onmessage = (messageIn) => {
       let data = JSON.parse(messageIn.data);
       if (data["messagetype"] === "meta" && data["command"] === "iam") {
-        myID = parseInt(data["content"])
+        myID = parseInt(data["content"]);
       }
       if (
         data["messagetype"] === "meta" &&
@@ -76,25 +76,112 @@ const test3_figureoutwhosturn = async () => {
         data["content"] === "filled"
       ) {
         const gamedata = data.game;
-        if (gamedata.deck.length === 31 && gamedata.player1hand.length === 10 && gamedata.player2hand.length === 10){
-          console.log("Passed: All lenghts are correct")
-          console.log("MyID:", myID)
-          console.log("player1 info", gamedata.player1)
-          console.log("player2 info", gamedata.player2)
-          console.log("the players turn:", gamedata.turn)
-        }
-        else {
-          console.error("Failed: not the right number of cards", gamedata.deck.length, gamedata.player1hand.length, gamedata.player2hand.length)
+        if (
+          gamedata.deck.length === 31 &&
+          gamedata.player1hand.length === 10 &&
+          gamedata.player2hand.length === 10
+        ) {
+          console.log("Passed: All lenghts are correct");
+          console.log("MyID:", myID);
+          console.log("player1 info", gamedata.player1);
+          console.log("player2 info", gamedata.player2);
+          console.log("the players turn:", gamedata.turn);
+        } else {
+          console.error(
+            "Failed: not the right number of cards",
+            gamedata.deck.length,
+            gamedata.player1hand.length,
+            gamedata.player2hand.length
+          );
         }
         if (gamedata.player1.id === myID && gamedata.turn === myID) {
-          console.log("Passed: my id is the same as the turn and the same as player1");
-          resolve()
+          console.log(
+            "Passed: my id is the same as the turn and the same as player1"
+          );
+          resolve();
         } else {
-          console.error("Failed: not proper result", gamedata.player1.id, myID, gamedata.turn)
-          resolve()
+          console.error(
+            "Failed: not proper result",
+            gamedata.player1.id,
+            myID,
+            gamedata.turn
+          );
+          resolve();
         }
       }
     };
+  });
+};
+//UTILS
+const isMyTurn = (myID, data) => {
+  return (
+    data.game.turn === myID
+  );
+};
+
+const stringifyCard = (card) => {
+  return card.suit + "-" + card.rank;
+};
+
+const isStartNotification = (data) => {
+  return (
+    data["messagetype"] === "meta" &&
+    data["command"] === "gameroomstatus" &&
+    data["content"] === "filled" &&
+    data.game.status === "starting"
+  );
+};
+
+const test4_playmoves = () => {
+  return new Promise((resolve) => {
+    WS1 = new WebSocket("ws://localhost:8080/channel/test4/play");
+    WS2 = new WebSocket("ws://localhost:8080/channel/test4/play");
+    let myID = null;
+
+    WS1.onmessage = (messageIn) => {
+      let data = JSON.parse(messageIn.data);
+      console.log(data.game);
+      if (data["messagetype"] === "meta" && data["command"] === "iam") {
+        myID = parseInt(data["content"]);
+      }
+      if (isMyTurn(myID, data) && isStartNotification(data)) {
+        WS1.send(
+          JSON.stringify({
+            messagetype: "game",
+            command: "draw",
+            content: "stack",
+            playerinfo: data.game.player1,
+          })
+        );
+      }
+      if (data.messagetype === "game" && data.command === "gameupdate") {
+        if (isMyTurn(myID, data) && data.game.status === "waitdiscard") {
+          console.log("made it");
+          if (
+            data.game.player1hand.length !== 11 ||
+            data.game.deck.length !== 30
+          ) {
+            console.log(
+              "Error: the card from the previous instruction was not drawn properly"
+            );
+          }
+          const response = JSON.stringify({
+            messagetype: "game",
+            command: "discard",
+            content: stringifyCard(data.game.player1hand[0]),
+            playerinfo: data.game.player1,
+          });
+          console.log(response);
+          WS1.send(response);
+        } else {
+          console.log(data.messagetype === "game");
+          console.log(data.command === "gameupdate");
+          console.log(isMyTurn(myID, data))
+          console.log(data.game.status === "waitdiscard")
+        }
+      }
+    };
+    WS2.onmessage = (messageIn) => {};
   });
 };
 
@@ -102,6 +189,7 @@ const runtests = async () => {
   await test("Basic Connection", test1_BasicConnect);
   await test("finding the oppenet", test2_figureOutMetaData);
   await test("finding the intial game state", test3_figureoutwhosturn);
+  await test("doing some starting moves", test4_playmoves);
 };
 
 runtests();

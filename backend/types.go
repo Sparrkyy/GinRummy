@@ -1,12 +1,12 @@
 package main
 
-type Suit int
+type Suit string
 
 const (
-	Spades Suit = iota
-	Clubs
-	Hearts
-	Diamonds
+	Spades Suit = "spades"
+	Clubs = "clubs"
+	Hearts = "hearts"
+	Diamonds = "diamonds"
 )
 
 type Rank int
@@ -36,7 +36,7 @@ const (
 )
 
 type Card struct {
-	Rank Rank `json:"card"`
+	Rank Rank `json:"rank"`
 	Suit Suit `json:"suit"`
 }
 
@@ -56,7 +56,7 @@ type Game struct {
 	Player1hand *[]Card    `json:"player1hand"`
 	Player2hand *[]Card    `json:"player2hand"`
 	DiscardPile *[]Card    `json:"discardpile"`
-	Status      GameStatus `json:"gamestatus"`
+	Status      GameStatus `json:"status"`
   Name string `json:"name"`
 }
 
