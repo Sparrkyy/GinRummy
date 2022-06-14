@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
+
 	"gopkg.in/olahol/melody.v1"
 )
 
@@ -47,13 +49,13 @@ func connectToGame(s *melody.Session) {
 	//Putting Player into a room
 	gameRoomStatus := getGameRoomStatus(gameRoomName)
 	if gameRoomStatus == "nonexistent" {
-    Deck := makeDeck()
+		Deck := makeDeck()
 		Player1hand, Deck := MakeHand(Deck)
 		Player2hand, Deck := MakeHand(Deck)
-    var card Card
-    card, *Deck = PopCardStack(Deck)
-    DiscardPile := []Card{card}
-    GAMES[gameRoomName] = &Game{Name: PLAYERS[s].GameRoom, Turn: PLAYERS[s].ID, Player1: *PLAYERS[s], Deck: Deck, Player1hand: &Player1hand, Player2hand: &Player2hand, DiscardPile: &DiscardPile}
+		var card Card
+		card, *Deck = PopCardStack(Deck)
+		DiscardPile := []Card{card}
+		GAMES[gameRoomName] = &Game{Name: PLAYERS[s].GameRoom, Turn: PLAYERS[s].ID, Player1: *PLAYERS[s], Deck: Deck, Player1hand: &Player1hand, Player2hand: &Player2hand, DiscardPile: &DiscardPile}
 	} else {
 		if GAMES[gameRoomName].Player1.ID == 0 {
 			GAMES[gameRoomName].Player1 = *PLAYERS[s]
@@ -65,12 +67,10 @@ func connectToGame(s *melody.Session) {
 
 	}
 
-
-
 	//now checking if the room is full or not
 	gameRoomStatus = getGameRoomStatus(gameRoomName)
 	if gameRoomStatus == filled {
-    GAMES[gameRoomName].Status = Starting
+		GAMES[gameRoomName].Status = Starting
 		message = WSMetaJSONFormat{MessageType: "meta", Command: "gameroomstatus", Content: "filled", Game: *GAMES[gameRoomName]}
 		messageStr, err = json.Marshal(message)
 		if err != nil {
@@ -95,18 +95,18 @@ func leaveGame(s *melody.Session) {
 			var newPlayer = new(PlayerInfo)
 			game.Player1 = *newPlayer
 			successfulRemoval = true
-      if game.Player2.ID == 0 {
-        delete(GAMES, game.Name)
-      }
+			if game.Player2.ID == 0 {
+				delete(GAMES, game.Name)
+			}
 			break
 		}
 		if game.Player2.ID == PLAYERS[s].ID {
 			var newPlayer = new(PlayerInfo)
 			game.Player2 = *newPlayer
 			successfulRemoval = true
-      if game.Player1.ID == 0 {
-        delete(GAMES, game.Name)
-      }
+			if game.Player1.ID == 0 {
+				delete(GAMES, game.Name)
+			}
 			break
 		}
 	}
@@ -122,70 +122,123 @@ func leaveGame(s *melody.Session) {
 }
 
 type WSGameJSONFormat struct {
-  MessageType string `json:"messagetype"`
-  Command string `json:"command"`
-  Content string `json:"content"`
-  Player PlayerInfo `json:"playerinfo"`
+	MessageType string     `json:"messagetype"`
+	Command     string     `json:"command"`
+	Content     string     `json:"content"`
+	Player      PlayerInfo `json:"playerinfo"`
+	Card        Card       `json:"card"`
 }
 
-func drawCardDeck (game Game, playerNum int) (Game, error) {
-  var deck []Card;
-  var card Card;
-  deck = *game.Deck
-  card, deck = PopCardStack(game.Deck)
-  var playerHand []Card;
-  if playerNum == game.Player1.ID {
-    playerHand = *game.Player1hand
-    playerHand = append(playerHand, card)
-    game.Player1hand = &playerHand
+func drawCardDeck(game Game, playerNum int) (Game, error) {
+	var deck []Card
+	var card Card
+	deck = *game.Deck
+	card, deck = PopCardStack(game.Deck)
+	var playerHand []Card
+	if playerNum == game.Player1.ID {
+		playerHand = *game.Player1hand
+		playerHand = append(playerHand, card)
+		game.Player1hand = &playerHand
+	}
+	if playerNum == game.Player2.ID {
+		playerHand = *game.Player2hand
+		playerHand = append(playerHand, card)
+		game.Player2hand = &playerHand
+	}
+	game.Deck = &deck
+	return game, nil
+}
+
+func filterCards(cards []Card, validCard func(Card) bool) []Card {
+	var newCards []Card
+	for _, card := range cards {
+		if validCard(card) {
+			newCards = append(newCards, card)
+		}
+	}
+	return newCards
+}
+
+func discardCard(game Game, playerNum int, card Card) (Game, error) {
+	//putting it on the discard pile
+	discard := *game.DiscardPile
+	discard = append(discard, card)
+  game.DiscardPile = &discard
+
+	//taking it off the players hand
+	if playerNum == game.Player1.ID {
+		var hand []Card
+		hand = *game.Player1hand
+		hand = filterCards(hand, func(c Card) bool {
+			if c.Rank != card.Rank && c.Suit != card.Suit {
+				return true
+			}
+			return false
+		})
+    game.Player1hand = &hand
+	} else if playerNum == game.Player2.ID {
+		var hand []Card
+		hand = *game.Player1hand
+		hand = filterCards(hand, func(c Card) bool {
+			if c.Rank != card.Rank && c.Suit != card.Suit {
+				return true
+			}
+			return false
+		})
+    game.Player2hand = &hand
+	} else {
+    return game, errors.New("The Player ID given is not a current player")
   }
-  if playerNum == game.Player2.ID {
-    playerHand = *game.Player2hand
-    playerHand = append(playerHand, card)
-    game.Player2hand = &playerHand
-  }
-  game.Deck = &deck
-  return game, nil
+	return game, nil
 }
-
-func discardCard(game Game, playerNum int, card string) (Game, error) {
-  //not finished obviously 
-  return game, nil
-}
-
 
 func handleGameMoves(s *melody.Session, msg []byte) {
 	LOCK.Lock()
-  var response WSMetaJSONFormat
-  var input WSGameJSONFormat
-  err := json.Unmarshal(msg, &input)
-  if err != nil{
-    fmt.Println("Error: Unable to parse json message", err.Error())
-    return
-  }
-  fmt.Println(input)
-  //for drawing a card from the stack 
-  if input.Command == "draw" {
-    if input.Content == "stack"{
-      var game Game
-      game = *GAMES[input.Player.GameRoom]
-      game, err = drawCardDeck(game, input.Player.ID)
-      game.Status = WaitDiscard
-      GAMES[input.Player.GameRoom] = &game
-      response.Game = *GAMES[input.Player.GameRoom]
-      response.MessageType = "game"
-      response.Command = "gameupdate"
+	var response WSMetaJSONFormat
+  response.MessageType = "game"
+  response.Command = "gameupdate"
+	var input WSGameJSONFormat
+	err := json.Unmarshal(msg, &input)
+	if err != nil {
+		fmt.Println("Error: Unable to parse json message", err.Error())
+		return
+	}
+	//for drawing a card from the stack
+	if input.Command == "draw" {
+		if input.Content == "stack" {
+			var game Game
+			game = *GAMES[input.Player.GameRoom]
+			game, err = drawCardDeck(game, input.Player.ID)
+			game.Status = WaitDiscard
+			GAMES[input.Player.GameRoom] = &game
+			response.Game = *GAMES[input.Player.GameRoom]
+		}
+	}
+
+	if input.Command == "discard" {
+    var game Game
+    game = *GAMES[input.Player.GameRoom]
+    game, err := discardCard(game, input.Player.ID, input.Card)
+    if err != nil {
+      fmt.Println("Error: There was a issue with the discardCard", err.Error())
+      return
     }
-  }
+    //set it to the beginning
+    game.Status = BegTurn
+    //give the other player their turn
+    if game.Turn == game.Player1.ID {
+      game.Turn = game.Player2.ID
+    } else if game.Turn == game.Player2.ID {
+      game.Turn = game.Player1.ID
+    }
+    GAMES[input.Player.GameRoom] = &game
+    response.Game = *GAMES[input.Player.GameRoom]
+	}
 
-  if input.Command == "discard" {
-
-  }
-
-  result, err:= json.Marshal(response)
-  if err != nil {
-    fmt.Println("Error: cannot parse the response")
-  }
+	result, err := json.Marshal(response)
+	if err != nil {
+		fmt.Println("Error: cannot parse the response")
+	}
 	MROUTER.BroadcastFilter(result, func(q *melody.Session) bool {
 		return q.Request.URL.Path == s.Request.URL.Path
 	})

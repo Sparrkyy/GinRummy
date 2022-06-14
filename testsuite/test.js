@@ -114,9 +114,7 @@ const test3_figureoutwhosturn = async () => {
 };
 //UTILS
 const isMyTurn = (myID, data) => {
-  return (
-    data.game.turn === myID
-  );
+  return data.game.turn === myID;
 };
 
 const stringifyCard = (card) => {
@@ -136,15 +134,15 @@ const test4_playmoves = () => {
   return new Promise((resolve) => {
     WS1 = new WebSocket("ws://localhost:8080/channel/test4/play");
     WS2 = new WebSocket("ws://localhost:8080/channel/test4/play");
-    let myID = null;
-
+    let player1ID = null;
+    let player2ID = null;
     WS1.onmessage = (messageIn) => {
       let data = JSON.parse(messageIn.data);
       console.log(data.game);
       if (data["messagetype"] === "meta" && data["command"] === "iam") {
-        myID = parseInt(data["content"]);
+        player1ID = parseInt(data["content"]);
       }
-      if (isMyTurn(myID, data) && isStartNotification(data)) {
+      if (isMyTurn(player1ID, data) && isStartNotification(data)) {
         WS1.send(
           JSON.stringify({
             messagetype: "game",
@@ -155,8 +153,7 @@ const test4_playmoves = () => {
         );
       }
       if (data.messagetype === "game" && data.command === "gameupdate") {
-        if (isMyTurn(myID, data) && data.game.status === "waitdiscard") {
-          console.log("made it");
+        if (isMyTurn(player1ID, data) && data.game.status === "waitdiscard") {
           if (
             data.game.player1hand.length !== 11 ||
             data.game.deck.length !== 30
@@ -168,20 +165,23 @@ const test4_playmoves = () => {
           const response = JSON.stringify({
             messagetype: "game",
             command: "discard",
-            content: stringifyCard(data.game.player1hand[0]),
+            card: data.game.player1hand[0],
             playerinfo: data.game.player1,
           });
-          console.log(response);
           WS1.send(response);
-        } else {
-          console.log(data.messagetype === "game");
-          console.log(data.command === "gameupdate");
-          console.log(isMyTurn(myID, data))
-          console.log(data.game.status === "waitdiscard")
         }
       }
     };
-    WS2.onmessage = (messageIn) => {};
+    WS2.onmessage = (messageIn) => {
+      let data = JSON.parse(messageIn.data);
+      if (data["messagetype"] === "meta" && data["command"] === "iam") {
+        player2ID = parseInt(data["content"]);
+      }
+      if (isMyTurn(player2ID, data) && data.game.status === "begturn") {
+        console.log("Passed: Player2 recieved their turn correctly")
+        resolve()
+      }
+    };
   });
 };
 

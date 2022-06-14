@@ -3,10 +3,19 @@ package main
 type Suit string
 
 const (
-	Spades Suit = "spades"
-	Clubs = "clubs"
-	Hearts = "hearts"
-	Diamonds = "diamonds"
+	Spades   Suit = "spades"
+	Clubs         = "clubs"
+	Hearts        = "hearts"
+	Diamonds      = "diamonds"
+)
+
+var (
+	suitMap = map[string]Suit{
+		"spades":   Spades,
+		"clubs":    Clubs,
+		"hearts":   Hearts,
+		"diamonds": Diamonds,
+	}
 )
 
 type Rank int
@@ -25,6 +34,24 @@ const (
 	Jack       = 11
 	Queen      = 12
 	King       = 13
+)
+
+var (
+	rankMap = map[int]Rank{
+		1:  Ace,
+		2:  Two,
+		3:  Three,
+		4:  Four,
+		5:  Five,
+		6:  Six,
+		7:  Seven,
+		8:  Eight,
+		9:  Nine,
+		10: Ten,
+		11: Jack,
+		12: Queen,
+		13: King,
+	}
 )
 
 type GameRoomStatus string
@@ -57,7 +84,7 @@ type Game struct {
 	Player2hand *[]Card    `json:"player2hand"`
 	DiscardPile *[]Card    `json:"discardpile"`
 	Status      GameStatus `json:"status"`
-  Name string `json:"name"`
+	Name        string     `json:"name"`
 }
 
 type PlayerInfo struct {
