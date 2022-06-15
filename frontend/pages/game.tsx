@@ -109,7 +109,21 @@ const isOpponentNotification = (data: InputData) => {
 
 const stringifyCard = (card: Card) => {
   return card.suit + card.rank;
-};
+}
+
+const getTurnByID = (game: Game, yourID: number) => {
+  return yourID === game.turn
+}
+
+const getHandByID = (game: Game, yourID: number) => {
+  if (yourID === game.player1.id) {
+    return game.player1hand
+  }
+  if (yourID === game.player2.id) {
+    return game.player2hand
+  }
+  return null
+}
 
 // if () {
 //   myID = parseInt(data["content"]);
@@ -118,10 +132,9 @@ const stringifyCard = (card: Card) => {
 const Game: NextPage = () => {
   //const router = useRouter();
   //const { userInfo, setUserInfo } = useContext(AuthContext);
-  const [messages, setMessages] = useState<string[]>([]);
   const [gameStatus, setGameStatus] = useState<GameRoomStatus>(GameRoomStatus.Lobby)
   const [showWarning, setShowWarning] = useState<boolean>(false)
-  const [playerHand, setPlayerHand] = useState<Card[] | null>(null);
+  const [game, setGame] = useState<Game | null>(null);
   const warning = useRef("")
   const roomName = useRef<string | null>(null);
   const playerName = useRef<string | null>(null);
@@ -152,6 +165,10 @@ const Game: NextPage = () => {
           return;
         }
 
+        if (data && GameRoomStatus.Filled === gameStatus) {
+          setGame(data.game)
+        }
+
         if (data && isIAmNotification(data)) {
           console.log("Got IAM")
           playerID.current = parseInt(data.content)
@@ -162,17 +179,19 @@ const Game: NextPage = () => {
           opponentID.current = parseInt(data.content)
         }
 
+        if (data && GameRoomStatus.Filled === gameStatus) {
+          console.log("Game Update!")
+          setGame(data.game)
+        }
+
         if (data && isStartNotification(data)) {
           console.log("Got START")
-          if (playerID.current === data.game.player1.id) {
-            setPlayerHand(data.game.player1hand)
-          }
-          if (playerID.current === data.game.player2.id) {
-            setPlayerHand(data.game.player2hand)
-          }
           setGameStatus(GameRoomStatus.Filled)
+          setGame(data.game)
 
         }
+
+
         console.log(data)
       };
 
@@ -195,20 +214,59 @@ const Game: NextPage = () => {
   return (
     <div
       className="w-screen h-screen flex justify-center items-center flex-column"
-      style={{ backgroundColor: "#FEC5E5" }}
+      style={{ backgroundColor: "#FEC5E5", padding:"10px" }}
     >
       {showWarning && <Alert variant='danger'> {warning.current} </Alert>}
+      {
+        gameStatus && GameRoomStatus.Filled &&
+        <>
+          <div style={{ display: "flex" }}>
+            {game && opponentID.current && getHandByID(game, opponentID.current)?.map((card) => {
+              return (
+                <div style={{}} key={card.suit + card.rank}>
+                  <img width="84" src={"/cards/" + "cardback" + ".png"} alt={stringifyCard(card)} />
+                </div>
+              )
+            })}
+          </div>
+          <h1
+            style={{
+              fontWeight: 900,
+              fontSize: "3.5rem",
+              padding: 30,
+              textAlign: "center",
+            }}
+          >
+          {game && playerID.current && getTurnByID(game, playerID.current) && "YOUR TURN"}
+          {game && opponentID.current && getTurnByID(game, opponentID.current) && "THEIR TURN"}
+          </h1>
+          <div style={{ display: "flex", gap: "15px"}}>
+            {game && playerID.current && getHandByID(game, playerID.current)?.map((card) => {
+              return (
+                <div style={{}} key={card.suit + card.rank}>
+                  <img width="70" src={"/cards/" + stringifyCard(card) + ".png"} alt={stringifyCard(card)} />
+                </div>
+              )
+            })}
+          </div>
+
+        </>
+
+
+      }
       {gameStatus !== GameRoomStatus.Filled &&
-        <h1
-          style={{
-            fontWeight: 900,
-            fontSize: "3.5rem",
-            padding: 30,
-            textAlign: "center",
-          }}
-        >
-          GAME LOBBY
-        </h1>
+        <>
+          <h1
+            style={{
+              fontWeight: 900,
+              fontSize: "3.5rem",
+              padding: 30,
+              textAlign: "center",
+            }}
+          >
+            GAME LOBBY
+          </h1>
+        </>
       }
       {gameStatus === GameRoomStatus.Lobby && (
         <Form onSubmit={(e) => e.preventDefault()}>
@@ -241,24 +299,6 @@ const Game: NextPage = () => {
           You are currently waiting in {roomName.current}
         </h1>
       )}
-      <div style={{display: "flex"}}>
-        {playerHand && playerHand.map((card) => {
-          return (
-            <div style={{}}>
-              <img width="70" src={"/cards/"+stringifyCard(card)+".png"} alt={stringifyCard(card)}/>
-            </div>
-          )
-
-        })}
-      </div>
-      {gameStatus !== GameRoomStatus.Filled
-        && <div>
-          {messages.map((ele) => (
-            <p style={{ border: "solid black 3px" }} key={ele}>{ele}</p>
-          ))}
-        </div>
-
-      }
     </div>
   );
 };
