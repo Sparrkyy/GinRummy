@@ -163,7 +163,7 @@ func discardCard(game Game, playerNum int, card Card) (Game, error) {
 	//putting it on the discard pile
 	discard := *game.DiscardPile
 	discard = append(discard, card)
-  game.DiscardPile = &discard
+	game.DiscardPile = &discard
 
 	//taking it off the players hand
 	if playerNum == game.Player1.ID {
@@ -175,7 +175,7 @@ func discardCard(game Game, playerNum int, card Card) (Game, error) {
 			}
 			return false
 		})
-    game.Player1hand = &hand
+		game.Player1hand = &hand
 	} else if playerNum == game.Player2.ID {
 		var hand []Card
 		hand = *game.Player1hand
@@ -185,18 +185,18 @@ func discardCard(game Game, playerNum int, card Card) (Game, error) {
 			}
 			return false
 		})
-    game.Player2hand = &hand
+		game.Player2hand = &hand
 	} else {
-    return game, errors.New("The Player ID given is not a current player")
-  }
+		return game, errors.New("The Player ID given is not a current player")
+	}
 	return game, nil
 }
 
 func handleGameMoves(s *melody.Session, msg []byte) {
 	LOCK.Lock()
 	var response WSMetaJSONFormat
-  response.MessageType = "game"
-  response.Command = "gameupdate"
+	response.MessageType = "game"
+	response.Command = "gameupdate"
 	var input WSGameJSONFormat
 	err := json.Unmarshal(msg, &input)
 	if err != nil {
@@ -216,23 +216,23 @@ func handleGameMoves(s *melody.Session, msg []byte) {
 	}
 
 	if input.Command == "discard" {
-    var game Game
-    game = *GAMES[input.Player.GameRoom]
-    game, err := discardCard(game, input.Player.ID, input.Card)
-    if err != nil {
-      fmt.Println("Error: There was a issue with the discardCard", err.Error())
-      return
-    }
-    //set it to the beginning
-    game.Status = BegTurn
-    //give the other player their turn
-    if game.Turn == game.Player1.ID {
-      game.Turn = game.Player2.ID
-    } else if game.Turn == game.Player2.ID {
-      game.Turn = game.Player1.ID
-    }
-    GAMES[input.Player.GameRoom] = &game
-    response.Game = *GAMES[input.Player.GameRoom]
+		var game Game
+		game = *GAMES[input.Player.GameRoom]
+		game, err := discardCard(game, input.Player.ID, input.Card)
+		if err != nil {
+			fmt.Println("Error: There was a issue with the discardCard", err.Error())
+			return
+		}
+		//set it to the beginning
+		game.Status = BegTurn
+		//give the other player their turn
+		if game.Turn == game.Player1.ID {
+			game.Turn = game.Player2.ID
+		} else if game.Turn == game.Player2.ID {
+			game.Turn = game.Player1.ID
+		}
+		GAMES[input.Player.GameRoom] = &game
+		response.Game = *GAMES[input.Player.GameRoom]
 	}
 
 	result, err := json.Marshal(response)
