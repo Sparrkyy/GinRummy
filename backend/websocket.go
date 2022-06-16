@@ -200,7 +200,7 @@ func discardCard(game Game, playerNum int, card Card) (Game, error) {
 		game.Player1hand = &hand
 	} else if playerNum == game.Player2.ID {
 		var hand []Card
-		hand = *game.Player1hand
+		hand = *game.Player2hand
 		hand = filterCards(hand, func(c Card) bool {
 			if c.Rank != card.Rank && c.Suit != card.Suit {
 				return true
