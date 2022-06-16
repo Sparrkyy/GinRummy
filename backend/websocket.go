@@ -121,7 +121,7 @@ func leaveGame(s *melody.Session) {
 	LOCK.Unlock()
 }
 
-type WSGameJSONFormat struct {
+type InputFormat struct {
 	MessageType string     `json:"messagetype"`
 	Command     string     `json:"command"`
 	Content     string     `json:"content"`
@@ -146,6 +146,28 @@ func drawCardDeck(game Game, playerNum int) (Game, error) {
 		game.Player2hand = &playerHand
 	}
 	game.Deck = &deck
+	return game, nil
+}
+
+func drawCardDiscard (game Game, playerNum int) (Game, error) {
+  if len(*game.DiscardPile) == 0{
+    return game, errors.New("Wasnt able to take from empty discard pile")
+  }
+  var discard []Card;
+  var card Card;
+  card, discard = PopCardStack(game.DiscardPile);
+	var playerHand []Card
+	if playerNum == game.Player1.ID {
+		playerHand = *game.Player1hand
+		playerHand = append(playerHand, card)
+		game.Player1hand = &playerHand
+	}
+	if playerNum == game.Player2.ID {
+		playerHand = *game.Player2hand
+		playerHand = append(playerHand, card)
+		game.Player2hand = &playerHand
+	}
+	game.DiscardPile = &discard
 	return game, nil
 }
 
@@ -192,12 +214,13 @@ func discardCard(game Game, playerNum int, card Card) (Game, error) {
 	return game, nil
 }
 
+
 func handleGameMoves(s *melody.Session, msg []byte) {
 	LOCK.Lock()
 	var response WSMetaJSONFormat
 	response.MessageType = "game"
 	response.Command = "gameupdate"
-	var input WSGameJSONFormat
+	var input InputFormat
 	err := json.Unmarshal(msg, &input)
 	if err != nil {
 		fmt.Println("Error: Unable to parse json message", err.Error())
@@ -212,7 +235,14 @@ func handleGameMoves(s *melody.Session, msg []byte) {
 			game.Status = WaitDiscard
 			GAMES[input.Player.GameRoom] = &game
 			response.Game = *GAMES[input.Player.GameRoom]
-		}
+    } else if input.Content == "discard" {
+			var game Game
+			game = *GAMES[input.Player.GameRoom]
+      game, err = drawCardDiscard(game, input.Player.ID)
+      game.Status = WaitDiscard
+			GAMES[input.Player.GameRoom] = &game
+			response.Game = *GAMES[input.Player.GameRoom]
+    }
 	}
 
 	if input.Command == "discard" {

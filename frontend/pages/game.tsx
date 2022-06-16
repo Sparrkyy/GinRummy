@@ -79,7 +79,7 @@ interface OutputData {
   command: string;
   content: string;
   playerinfo: PlayerInfo;
-  card: Card;
+  card?: Card;
 }
 
 interface InputData {
@@ -107,6 +107,10 @@ const isOpponentNotification = (data: InputData) => {
   return data["messagetype"] === "meta" && data["command"] === "opponent"
 }
 
+const isGameUpdateNotification = (data: InputData) => {
+  return data.command === "gameupdate"
+}
+
 const stringifyCard = (card: Card) => {
   return card.suit + card.rank;
 }
@@ -125,6 +129,11 @@ const getHandByID = (game: Game, yourID: number) => {
   return null
 }
 
+const getFirstDiscard = (game: Game) => {
+  const discardPile = game.discardpile;
+  return discardPile[discardPile.length - 1]
+}
+
 // if () {
 //   myID = parseInt(data["content"]);
 // }
@@ -141,6 +150,7 @@ const Game: NextPage = () => {
   const playerID = useRef<number | null>(null);
   const opponentID = useRef<number | null>(null);
   const client = useRef<websocket | null>(null);
+  const [selectedCard, setSelectedCard] = useState<Card | null>(null);
 
   const joinGame = () => {
     if (!roomName.current || roomName.current == "") {
@@ -179,7 +189,7 @@ const Game: NextPage = () => {
           opponentID.current = parseInt(data.content)
         }
 
-        if (data && GameRoomStatus.Filled === gameStatus) {
+        if (data && isGameUpdateNotification(data)) {
           console.log("Game Update!")
           setGame(data.game)
         }
@@ -202,6 +212,36 @@ const Game: NextPage = () => {
     };
   }
 
+  const drawCard = (playerinfo: PlayerInfo, option: string) => {
+    const response: OutputData = { messagetype: "game", command: "draw", content: option, playerinfo: playerinfo }
+    if (client.current) {
+      client.current.send(JSON.stringify(response))
+    }
+    else {
+      warning.current = "No Connection: Try Again Later"
+      setShowWarning(true)
+    }
+  }
+
+  const discardSelectedCard = () => {
+    if (client.current && game && selectedCard && playerID) {
+      const response: OutputData = {
+        messagetype: "game",
+        command: "discard",
+        content: "",
+        card: selectedCard,
+        playerinfo: playerID.current === game.player1.id ? game.player1 : game.player2,
+      };
+      client.current.send(JSON.stringify(response))
+    }
+    else {
+      warning.current = "Error: no connection, or no selection was made"
+      setShowWarning(true)
+    }
+
+
+  }
+
 
 
   useEffect(() => {
@@ -212,61 +252,85 @@ const Game: NextPage = () => {
   });
 
   return (
-    <div
-      className="w-screen h-screen flex justify-center items-center flex-column"
-      style={{ backgroundColor: "#FEC5E5", padding:"10px" }}
-    >
+    <div className="w-screen h-screen flex justify-center items-center flex-column" style={{ backgroundColor: "#FEC5E5", padding: "10px" }}>
       {showWarning && <Alert variant='danger'> {warning.current} </Alert>}
-      {
-        gameStatus && GameRoomStatus.Filled &&
-        <>
-          <div style={{ display: "flex" }}>
-            {game && opponentID.current && getHandByID(game, opponentID.current)?.map((card) => {
-              return (
-                <div style={{}} key={card.suit + card.rank}>
-                  <img width="84" src={"/cards/" + "cardback" + ".png"} alt={stringifyCard(card)} />
-                </div>
-              )
-            })}
+      {gameStatus && GameRoomStatus.Filled &&
+        <div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div style={{ display: "flex" }}>
+              {game && opponentID.current && getHandByID(game, opponentID.current)?.map((card) => {
+                return (
+                  <div style={{}} key={card.suit + card.rank}>
+                    <img width="84" src={"/cards/" + "cardback" + ".png"} alt={"card back"} />
+                  </div>
+                )
+              })}
+            </div>
+            <div style={{ display: "flex", alignItems: "center" }}>
+              {game && <img style={{ height: "110px" }} src={"/cards/" + "cardback" + ".png"} alt={"card back"} />}
+              <h1
+                style={{
+                  fontWeight: 900,
+                  fontSize: "3.5rem",
+                  padding: 30,
+                  textAlign: "center",
+                }}
+              >
+                {game && playerID.current && getTurnByID(game, playerID.current) && "YOUR TURN"}
+                {game && opponentID.current && getTurnByID(game, opponentID.current) && "THEIR TURN"}
+              </h1>
+              {game && game.discardpile.length > 0 && <img style={{ height: "100px" }} src={"/cards/" + stringifyCard(getFirstDiscard(game)) + ".png"} alt={stringifyCard(getFirstDiscard(game))} />}
+              {game && game.discardpile.length === 0 && <div style={{ height: "100px", border: "2px solid black", textAlign: "center", borderRadius: "5px", padding: "10px" }}>Empty Discard</div>}
+            </div>
+            <div style={{ display: "flex", gap: "15px" }}>
+              {game && playerID.current && getHandByID(game, playerID.current)?.map((card) => {
+                if (selectedCard && card.suit === selectedCard.suit && card.rank === selectedCard.rank) {
+                  return (<div style={{ border: "5px red solid" }} key={card.suit + card.rank} > <img width="70" src={"/cards/" + stringifyCard(card) + ".png"} alt={stringifyCard(card)} /> </div>)
+                }
+                return (<div style={{}} key={card.suit + card.rank} onClick={() => setSelectedCard(card)}> <img width="70" src={"/cards/" + stringifyCard(card) + ".png"} alt={stringifyCard(card)} /> </div>)
+              })}
+            </div>
           </div>
-          <h1
-            style={{
-              fontWeight: 900,
-              fontSize: "3.5rem",
-              padding: 30,
-              textAlign: "center",
-            }}
-          >
-          {game && playerID.current && getTurnByID(game, playerID.current) && "YOUR TURN"}
-          {game && opponentID.current && getTurnByID(game, opponentID.current) && "THEIR TURN"}
-          </h1>
-          <div style={{ display: "flex", gap: "15px"}}>
-            {game && playerID.current && getHandByID(game, playerID.current)?.map((card) => {
-              return (
-                <div style={{}} key={card.suit + card.rank}>
-                  <img width="70" src={"/cards/" + stringifyCard(card) + ".png"} alt={stringifyCard(card)} />
-                </div>
-              )
-            })}
-          </div>
+          {game && playerID.current && getTurnByID(game, playerID.current) &&
+            <div style={{ display: "flex", padding: "15px", justifyContent: "space-around" }}>
+              {game.status === "waitdiscard" &&
+                <Button
+                  variant="primary"
+                  type="submit"
+                  size="lg"
+                  onClick={() => discardSelectedCard()}
+                >
+                  Discard Selected Card
+                </Button>
+              }
+              {(game.status === "starting" || game.status === "begturn") &&
+                <>
+                  <Button
+                    variant="primary"
+                    type="submit"
+                    size="lg"
+                    onClick={() => drawCard(playerID.current === game.player1.id ? game.player1 : game.player2, "stack")}
+                  >
+                    Draw Deck
+                  </Button>
+                  <Button
+                    variant="primary"
+                    type="submit"
+                    size="lg"
+                    onClick={() => drawCard(playerID.current === game.player1.id ? game.player1 : game.player2, "discard")}
+                  >
+                    Draw Discard
+                  </Button>
+                </>
+              }
+            </div>
 
-        </>
-
-
+          }
+        </div>
       }
-      {gameStatus !== GameRoomStatus.Filled &&
-        <>
-          <h1
-            style={{
-              fontWeight: 900,
-              fontSize: "3.5rem",
-              padding: 30,
-              textAlign: "center",
-            }}
-          >
-            GAME LOBBY
-          </h1>
-        </>
+      {gameStatus !== GameRoomStatus.Filled && <h1 style={{ fontWeight: 900, fontSize: "3.5rem", padding: 30, textAlign: "center" }}>
+        GAME LOBBY
+      </h1>
       }
       {gameStatus === GameRoomStatus.Lobby && (
         <Form onSubmit={(e) => e.preventDefault()}>
