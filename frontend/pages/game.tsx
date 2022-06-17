@@ -7,6 +7,8 @@ import Form from "react-bootstrap/Form";
 import Alert from "react-bootstrap/Alert"
 import "bootstrap/dist/css/bootstrap.min.css";
 import { w3cwebsocket as W3CWebSocket } from "websocket";
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+
 
 interface websocket {
   onopen: Function;
@@ -151,6 +153,11 @@ const Game: NextPage = () => {
   const opponentID = useRef<number | null>(null);
   const client = useRef<websocket | null>(null);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
+  const [hand, setHand] = useState<Card[] | null>(null);
+  const dragCard = useRef<null | number>(null);
+  const dragOverCard = useRef<null | number>(null);
+
+
 
   const joinGame = () => {
     if (!roomName.current || roomName.current == "") {
@@ -242,6 +249,49 @@ const Game: NextPage = () => {
 
   }
 
+  function handleOnDragEnd(result: any) {
+    if (!result.destination) return;
+    if (!hand) return;
+    const items = [...hand];
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+    setHand(items);
+  }
+
+  const dragStart = (e:any, position:number) => {
+    dragCard.current = position;
+  };
+  
+  const dragEnter = (e:any, position:number) => {
+    dragOverCard.current = position;
+  };
+
+  const drop = (e:any) => {
+    console.log(dragOverCard.current, dragCard.current)
+    if (!hand) return;
+    if (dragCard.current === null) return;
+    if (dragOverCard.current === null) return;
+    const handCopy = [...hand];
+    const dragCardContent = handCopy[dragCard.current];
+    const dragOverCardContent = handCopy[dragOverCard.current];
+    handCopy[dragCard.current] = dragOverCardContent
+    handCopy[dragOverCard.current] = dragCardContent
+    dragCard.current = null;
+    dragOverCard.current = null;
+    setHand(handCopy);
+  };
+
+  useEffect(() => {
+    if (game) {
+      if (playerID.current === game.player1.id) {
+        setHand(game.player1hand)
+      }
+      else if (playerID.current === game.player2.id) {
+        setHand(game.player2hand)
+      }
+    }
+  }, [game])
+
 
 
   useEffect(() => {
@@ -283,12 +333,58 @@ const Game: NextPage = () => {
               {game && game.discardpile.length === 0 && <div style={{ height: "100px", border: "2px solid black", textAlign: "center", borderRadius: "5px", padding: "10px" }}>Empty Discard</div>}
             </div>
             <div style={{ display: "flex", gap: "15px" }}>
-              {game && playerID.current && getHandByID(game, playerID.current)?.map((card) => {
+              {game && playerID.current && hand &&
+                hand.map((card, i) => {
+                  return (
+                    <div style={{}} key={i} 
+                    /*onClick={() => setSelectedCard(card)}*/
+                    onDragStart={(e)=>dragStart(e,i)}
+                    onDragEnter={(e)=>dragEnter(e,i)}
+                    onDragOver={(e)=>e.preventDefault()}
+                    onDragEnd={drop}
+                    draggable
+                    > 
+                    <img width="70" src={"/cards/" + stringifyCard(card) + ".png"} alt={stringifyCard(card)} /> 
+                    </div>
+                  )
+
+                })
+                /*
+                getHandByID(game, playerID.current)?.map((card) => {
                 if (selectedCard && card.suit === selectedCard.suit && card.rank === selectedCard.rank) {
-                  return (<div style={{ border: "5px red solid" }} key={card.suit + card.rank} > <img width="70" src={"/cards/" + stringifyCard(card) + ".png"} alt={stringifyCard(card)} /> </div>)
+                  return (<div style={{ border: "5px red solid" }} key={card.suit + card.rank} > 
+                  <img width="70" src={"/cards/" + stringifyCard(card) + ".png"} alt={stringifyCard(card)} /> 
+                  </div>)
                 }
                 return (<div style={{}} key={card.suit + card.rank} onClick={() => setSelectedCard(card)}> <img width="70" src={"/cards/" + stringifyCard(card) + ".png"} alt={stringifyCard(card)} /> </div>)
-              })}
+                }
+                })
+                */
+                /*start of code mess*/
+                /*
+                <DragDropContext onDragEnd={handleOnDragEnd}>
+                  <Droppable droppableId="characters">
+                    {(provided) => (
+                      <ul className="characters" {...provided.droppableProps} ref={provided.innerRef}>
+                        {hand.map((card, index) => {
+                          return (
+                            <Draggable key={stringifyCard(card)} draggableId={stringifyCard(card)} index={index}>
+                              {(provided) => (
+                                <li ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
+                                    <img src={"/cards/" + stringifyCard(card) + ".png"} alt={stringifyCard(card)} />
+                                </li>
+                              )}
+                            </Draggable>
+                          );
+                        })}
+                        {provided.placeholder}
+                      </ul>
+                    )}
+                  </Droppable>
+                </DragDropContext>
+                */
+                /*end of code mess*/
+              }
             </div>
           </div>
           {game && playerID.current && getTurnByID(game, playerID.current) &&
