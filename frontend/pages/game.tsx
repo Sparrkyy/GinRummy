@@ -136,6 +136,13 @@ const getFirstDiscard = (game: Game) => {
   return discardPile[discardPile.length - 1]
 }
 
+const areCardsEqual = (card1: Card, card2: Card | null) =>{
+  if (!card2) return false
+  if (card1.rank !== card2.rank) return false
+  if (card1.suit !== card2.suit) return false
+  return true
+}
+
 // if () {
 //   myID = parseInt(data["content"]);
 // }
@@ -273,9 +280,8 @@ const Game: NextPage = () => {
     if (dragOverCard.current === null) return;
     const handCopy = [...hand];
     const dragCardContent = handCopy[dragCard.current];
-    const dragOverCardContent = handCopy[dragOverCard.current];
-    handCopy[dragCard.current] = dragOverCardContent
-    handCopy[dragOverCard.current] = dragCardContent
+    handCopy.splice(dragCard.current, 1);
+    handCopy.splice(dragOverCard.current, 0, dragCardContent);
     dragCard.current = null;
     dragOverCard.current = null;
     setHand(handCopy);
@@ -336,8 +342,8 @@ const Game: NextPage = () => {
               {game && playerID.current && hand &&
                 hand.map((card, i) => {
                   return (
-                    <div style={{}} key={i} 
-                    /*onClick={() => setSelectedCard(card)}*/
+                    <div style={{}} className={ areCardsEqual(card, selectedCard)? "selected-card": ""} key={i} 
+                    onClick={() => setSelectedCard(card)}
                     onDragStart={(e)=>dragStart(e,i)}
                     onDragEnter={(e)=>dragEnter(e,i)}
                     onDragOver={(e)=>e.preventDefault()}
@@ -349,41 +355,6 @@ const Game: NextPage = () => {
                   )
 
                 })
-                /*
-                getHandByID(game, playerID.current)?.map((card) => {
-                if (selectedCard && card.suit === selectedCard.suit && card.rank === selectedCard.rank) {
-                  return (<div style={{ border: "5px red solid" }} key={card.suit + card.rank} > 
-                  <img width="70" src={"/cards/" + stringifyCard(card) + ".png"} alt={stringifyCard(card)} /> 
-                  </div>)
-                }
-                return (<div style={{}} key={card.suit + card.rank} onClick={() => setSelectedCard(card)}> <img width="70" src={"/cards/" + stringifyCard(card) + ".png"} alt={stringifyCard(card)} /> </div>)
-                }
-                })
-                */
-                /*start of code mess*/
-                /*
-                <DragDropContext onDragEnd={handleOnDragEnd}>
-                  <Droppable droppableId="characters">
-                    {(provided) => (
-                      <ul className="characters" {...provided.droppableProps} ref={provided.innerRef}>
-                        {hand.map((card, index) => {
-                          return (
-                            <Draggable key={stringifyCard(card)} draggableId={stringifyCard(card)} index={index}>
-                              {(provided) => (
-                                <li ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                                    <img src={"/cards/" + stringifyCard(card) + ".png"} alt={stringifyCard(card)} />
-                                </li>
-                              )}
-                            </Draggable>
-                          );
-                        })}
-                        {provided.placeholder}
-                      </ul>
-                    )}
-                  </Droppable>
-                </DragDropContext>
-                */
-                /*end of code mess*/
               }
             </div>
           </div>
