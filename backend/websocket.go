@@ -171,14 +171,38 @@ func drawCardDiscard (game Game, playerNum int) (Game, error) {
 	return game, nil
 }
 
-func filterCards(cards []Card, validCard func(Card) bool) []Card {
+func filterCards(cards []Card, validCard func(Card) bool) *[]Card {
 	var newCards []Card
 	for _, card := range cards {
 		if validCard(card) {
 			newCards = append(newCards, card)
 		}
 	}
-	return newCards
+	return &newCards
+}
+
+func removeCard(cards []Card, cardToRemove Card) ([]Card, error){
+  var newCards [] Card;
+  for _, card := range cards{
+    if (notEqualCards(card, cardToRemove)){
+      newCards = append(newCards, card)
+    }
+  }
+  return newCards, nil
+}
+
+func equalCards(card1 Card, card2 Card) bool {
+  if card1.Rank != card2.Rank{
+    return false
+  }
+  if card1.Suit != card2.Suit {
+    return false
+  }
+  return true
+}
+
+func notEqualCards(card1 Card, card2 Card) bool {
+  return !equalCards(card1, card2);
 }
 
 func discardCard(game Game, playerNum int, card Card) (Game, error) {
@@ -189,24 +213,17 @@ func discardCard(game Game, playerNum int, card Card) (Game, error) {
 
 	//taking it off the players hand
 	if playerNum == game.Player1.ID {
-		var hand []Card
-		hand = *game.Player1hand
-		hand = filterCards(hand, func(c Card) bool {
-			if c.Rank != card.Rank && c.Suit != card.Suit {
-				return true
-			}
-			return false
-		})
+    hand, err := removeCard(*game.Player1hand, card)
+    if err != nil {
+      fmt.Println("Error occured during execution", err.Error())
+    }
 		game.Player1hand = &hand
+
 	} else if playerNum == game.Player2.ID {
-		var hand []Card
-		hand = *game.Player2hand
-		hand = filterCards(hand, func(c Card) bool {
-			if c.Rank != card.Rank && c.Suit != card.Suit {
-				return true
-			}
-			return false
-		})
+    hand, err := removeCard(*game.Player2hand, card)
+    if err != nil {
+      fmt.Println("Error occured during execution", err.Error())
+    }
 		game.Player2hand = &hand
 	} else {
 		return game, errors.New("The Player ID given is not a current player")
