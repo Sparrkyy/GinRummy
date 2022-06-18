@@ -287,14 +287,51 @@ const Game: NextPage = () => {
     setHand(handCopy);
   };
 
+  const setHandPreserveOrder = (serverHand:Card[]) =>{
+    if (!hand){
+      setHand(serverHand)
+      return
+    }
+    const cardMap = new Map<string, number>()
+    const handCopy = [...hand]
+    for (let i=0; i<handCopy.length;i++){
+      cardMap.set(stringifyCard(handCopy[i]), i+1)
+    }
+
+    const resultHand = [...serverHand]
+    resultHand.sort((a:Card, b:Card)=>{
+      const scoreA = cardMap.get(stringifyCard(a))
+      const scoreB = cardMap.get(stringifyCard(b))
+      if (scoreA && scoreB){
+        return scoreA - scoreB
+      }
+      else if (scoreA && !scoreB){
+        return 1
+      }
+      else if (scoreB && !scoreA){
+        return 1
+      }
+      return 0
+    })
+    setHand(resultHand)
+  }
+
   useEffect(() => {
-    if (game) {
-      if (playerID.current === game.player1.id) {
-        setHand(game.player1hand)
-      }
-      else if (playerID.current === game.player2.id) {
-        setHand(game.player2hand)
-      }
+    console.log("fire use effect")
+    if(!game) return;
+    console.log("game is not null")
+    if (playerID.current === game.player1.id) {
+      console.log("is player 1")
+      setHandPreserveOrder(game.player1hand)
+      //setHand(game.player1hand)
+    }
+    else if (playerID.current === game.player2.id) {
+      console.log("is player 2", game.player2hand)
+      setHandPreserveOrder(game.player2hand)
+      // setHand(game.player2hand)
+    }
+    else {
+      console.log("is niether current players")
     }
   }, [game])
 
