@@ -121,7 +121,7 @@ func leaveGame(s *melody.Session) {
 	LOCK.Unlock()
 }
 
-type WSGameJSONFormat struct {
+type InputFormat struct {
 	MessageType string     `json:"messagetype"`
 	Command     string     `json:"command"`
 	Content     string     `json:"content"`
@@ -149,55 +149,95 @@ func drawCardDeck(game Game, playerNum int) (Game, error) {
 	return game, nil
 }
 
-func filterCards(cards []Card, validCard func(Card) bool) []Card {
+func drawCardDiscard (game Game, playerNum int) (Game, error) {
+  if len(*game.DiscardPile) == 0{
+    return game, errors.New("Wasnt able to take from empty discard pile")
+  }
+  var discard []Card;
+  var card Card;
+  card, discard = PopCardStack(game.DiscardPile);
+	var playerHand []Card
+	if playerNum == game.Player1.ID {
+		playerHand = *game.Player1hand
+		playerHand = append(playerHand, card)
+		game.Player1hand = &playerHand
+	}
+	if playerNum == game.Player2.ID {
+		playerHand = *game.Player2hand
+		playerHand = append(playerHand, card)
+		game.Player2hand = &playerHand
+	}
+	game.DiscardPile = &discard
+	return game, nil
+}
+
+func filterCards(cards []Card, validCard func(Card) bool) *[]Card {
 	var newCards []Card
 	for _, card := range cards {
 		if validCard(card) {
 			newCards = append(newCards, card)
 		}
 	}
-	return newCards
+	return &newCards
+}
+
+func removeCard(cards []Card, cardToRemove Card) ([]Card, error){
+  var newCards [] Card;
+  for _, card := range cards{
+    if (notEqualCards(card, cardToRemove)){
+      newCards = append(newCards, card)
+    }
+  }
+  return newCards, nil
+}
+
+func equalCards(card1 Card, card2 Card) bool {
+  if card1.Rank != card2.Rank{
+    return false
+  }
+  if card1.Suit != card2.Suit {
+    return false
+  }
+  return true
+}
+
+func notEqualCards(card1 Card, card2 Card) bool {
+  return !equalCards(card1, card2);
 }
 
 func discardCard(game Game, playerNum int, card Card) (Game, error) {
 	//putting it on the discard pile
 	discard := *game.DiscardPile
 	discard = append(discard, card)
-  game.DiscardPile = &discard
+	game.DiscardPile = &discard
 
 	//taking it off the players hand
 	if playerNum == game.Player1.ID {
-		var hand []Card
-		hand = *game.Player1hand
-		hand = filterCards(hand, func(c Card) bool {
-			if c.Rank != card.Rank && c.Suit != card.Suit {
-				return true
-			}
-			return false
-		})
-    game.Player1hand = &hand
+    hand, err := removeCard(*game.Player1hand, card)
+    if err != nil {
+      fmt.Println("Error occured during execution", err.Error())
+    }
+		game.Player1hand = &hand
+
 	} else if playerNum == game.Player2.ID {
-		var hand []Card
-		hand = *game.Player1hand
-		hand = filterCards(hand, func(c Card) bool {
-			if c.Rank != card.Rank && c.Suit != card.Suit {
-				return true
-			}
-			return false
-		})
-    game.Player2hand = &hand
+    hand, err := removeCard(*game.Player2hand, card)
+    if err != nil {
+      fmt.Println("Error occured during execution", err.Error())
+    }
+		game.Player2hand = &hand
 	} else {
-    return game, errors.New("The Player ID given is not a current player")
-  }
+		return game, errors.New("The Player ID given is not a current player")
+	}
 	return game, nil
 }
+
 
 func handleGameMoves(s *melody.Session, msg []byte) {
 	LOCK.Lock()
 	var response WSMetaJSONFormat
-  response.MessageType = "game"
-  response.Command = "gameupdate"
-	var input WSGameJSONFormat
+	response.MessageType = "game"
+	response.Command = "gameupdate"
+	var input InputFormat
 	err := json.Unmarshal(msg, &input)
 	if err != nil {
 		fmt.Println("Error: Unable to parse json message", err.Error())
@@ -212,27 +252,34 @@ func handleGameMoves(s *melody.Session, msg []byte) {
 			game.Status = WaitDiscard
 			GAMES[input.Player.GameRoom] = &game
 			response.Game = *GAMES[input.Player.GameRoom]
-		}
+    } else if input.Content == "discard" {
+			var game Game
+			game = *GAMES[input.Player.GameRoom]
+      game, err = drawCardDiscard(game, input.Player.ID)
+      game.Status = WaitDiscard
+			GAMES[input.Player.GameRoom] = &game
+			response.Game = *GAMES[input.Player.GameRoom]
+    }
 	}
 
 	if input.Command == "discard" {
-    var game Game
-    game = *GAMES[input.Player.GameRoom]
-    game, err := discardCard(game, input.Player.ID, input.Card)
-    if err != nil {
-      fmt.Println("Error: There was a issue with the discardCard", err.Error())
-      return
-    }
-    //set it to the beginning
-    game.Status = BegTurn
-    //give the other player their turn
-    if game.Turn == game.Player1.ID {
-      game.Turn = game.Player2.ID
-    } else if game.Turn == game.Player2.ID {
-      game.Turn = game.Player1.ID
-    }
-    GAMES[input.Player.GameRoom] = &game
-    response.Game = *GAMES[input.Player.GameRoom]
+		var game Game
+		game = *GAMES[input.Player.GameRoom]
+		game, err := discardCard(game, input.Player.ID, input.Card)
+		if err != nil {
+			fmt.Println("Error: There was a issue with the discardCard", err.Error())
+			return
+		}
+		//set it to the beginning
+		game.Status = BegTurn
+		//give the other player their turn
+		if game.Turn == game.Player1.ID {
+			game.Turn = game.Player2.ID
+		} else if game.Turn == game.Player2.ID {
+			game.Turn = game.Player1.ID
+		}
+		GAMES[input.Player.GameRoom] = &game
+		response.Game = *GAMES[input.Player.GameRoom]
 	}
 
 	result, err := json.Marshal(response)

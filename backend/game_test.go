@@ -38,5 +38,29 @@ func TestPopCard(t *testing.T){
   if len(*deck) != 51 {
     t.Fatal("Deck did not lose a card to pop")
   }
+}
 
+func TestRemoveCard(t *testing.T){
+  deck := makeDeck()
+	if len(*deck) != 52 {
+		t.Fatal("Deck is not 52 cards")
+	}
+  spades5 := Card{Rank:5, Suit:Spades}
+  var newDeck []Card;
+  newDeck, err := removeCard(*deck, spades5)
+
+  if err != nil {
+    t.Fatal("There was a error removing the card", err.Error())
+  }
+
+  if len(newDeck) != 51 {
+    t.Fatal("The Length of the deck was not one less after trying to filter one card, it was: ", len(*deck))
+  }
+
+  for _, card := range newDeck{
+    if equalCards(card, spades5){
+      t.Fatal("Found the card that was supposed to be removed");
+    }
+  }
+  
 }
