@@ -220,8 +220,7 @@ const Game: NextPage = () => {
       };
 
       client.current.onerror = () => {
-        warning.current = "Connection to Server Failed, Try Again Later"
-        setShowWarning(true)
+        setFadedWarning("Connection to Server Failed, Try Again Later")
       }
     };
   }
@@ -232,8 +231,7 @@ const Game: NextPage = () => {
       client.current.send(JSON.stringify(response))
     }
     else {
-      warning.current = "No Connection: Try Again Later"
-      setShowWarning(true)
+      setFadedWarning("No Connection: Try Again Later")
     }
   }
 
@@ -249,8 +247,7 @@ const Game: NextPage = () => {
       client.current.send(JSON.stringify(response))
     }
     else {
-      warning.current = "Error: no connection, or no selection was made"
-      setShowWarning(true)
+      setFadedWarning("Error: no connection, or no selection was made")
     }
 
 
@@ -335,6 +332,23 @@ const Game: NextPage = () => {
     }
   }, [game])
 
+  const setFadedWarning = (message: string) => {
+    warning.current = message
+    setShowWarning(true)
+    setTimeout(()=>{
+      warning.current = ""
+      setShowWarning(false)
+    }, 2000)
+  }
+
+  const toggleSelectedCard = (card: Card) => {
+    if (areCardsEqual(card, selectedCard)){
+      setSelectedCard(null)
+      return
+    }
+    setSelectedCard(card)
+  }
+
 
 
   useEffect(() => {
@@ -379,8 +393,8 @@ const Game: NextPage = () => {
               {game && playerID.current && hand &&
                 hand.map((card, i) => {
                   return (
-                    <div style={{}} className={ areCardsEqual(card, selectedCard)? "selected-card": ""} key={i} 
-                    onClick={() => setSelectedCard(card)}
+                    <div style={{cursor:"pointer"}} className={ areCardsEqual(card, selectedCard)? "selected-card": ""} key={i} 
+                    onClick={() => toggleSelectedCard(card)}
                     onDragStart={(e)=>dragStart(e,i)}
                     onDragEnter={(e)=>dragEnter(e,i)}
                     onDragOver={(e)=>e.preventDefault()}
