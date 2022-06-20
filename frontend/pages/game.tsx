@@ -4,11 +4,10 @@ import { useRouter } from "next/router";
 import { useContext, useEffect, useState, useRef } from "react";
 import Button from "react-bootstrap/button";
 import Form from "react-bootstrap/Form";
-import Alert from "react-bootstrap/Alert"
+import Alert from "react-bootstrap/Alert";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { w3cwebsocket as W3CWebSocket } from "websocket";
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
 interface websocket {
   onopen: Function;
@@ -20,7 +19,7 @@ interface websocket {
 enum GameRoomStatus {
   Lobby,
   WaitingForOpponent,
-  Filled
+  Filled,
 }
 
 enum Rank {
@@ -51,11 +50,10 @@ interface Card {
   rank: Rank;
 }
 
-
 enum GameStatus {
   Starting = "starting",
   BegTurn = "begturn",
-  WaitDiscard = "waitdiscard"
+  WaitDiscard = "waitdiscard",
 }
 
 interface Game {
@@ -88,9 +86,8 @@ interface InputData {
   messagetype: string;
   command: string;
   content: string;
-  game: Game
+  game: Game;
 }
-
 
 const isStartNotification = (data: InputData) => {
   return (
@@ -102,46 +99,46 @@ const isStartNotification = (data: InputData) => {
 };
 
 const isIAmNotification = (data: InputData) => {
-  return data["messagetype"] === "meta" && data["command"] === "iam"
-}
+  return data["messagetype"] === "meta" && data["command"] === "iam";
+};
 
 const isOpponentNotification = (data: InputData) => {
-  return data["messagetype"] === "meta" && data["command"] === "opponent"
-}
+  return data["messagetype"] === "meta" && data["command"] === "opponent";
+};
 
 const isGameUpdateNotification = (data: InputData) => {
-  return data.command === "gameupdate"
-}
+  return data.command === "gameupdate";
+};
 
 const stringifyCard = (card: Card) => {
   return card.suit + card.rank;
-}
+};
 
 const getTurnByID = (game: Game, yourID: number) => {
-  return yourID === game.turn
-}
+  return yourID === game.turn;
+};
 
 const getHandByID = (game: Game, yourID: number) => {
   if (yourID === game.player1.id) {
-    return game.player1hand
+    return game.player1hand;
   }
   if (yourID === game.player2.id) {
-    return game.player2hand
+    return game.player2hand;
   }
-  return null
-}
+  return null;
+};
 
 const getFirstDiscard = (game: Game) => {
   const discardPile = game.discardpile;
-  return discardPile[discardPile.length - 1]
-}
+  return discardPile[discardPile.length - 1];
+};
 
-const areCardsEqual = (card1: Card, card2: Card | null) =>{
-  if (!card2) return false
-  if (card1.rank !== card2.rank) return false
-  if (card1.suit !== card2.suit) return false
-  return true
-}
+const areCardsEqual = (card1: Card, card2: Card | null) => {
+  if (!card2) return false;
+  if (card1.rank !== card2.rank) return false;
+  if (card1.suit !== card2.suit) return false;
+  return true;
+};
 
 // if () {
 //   myID = parseInt(data["content"]);
@@ -150,10 +147,12 @@ const areCardsEqual = (card1: Card, card2: Card | null) =>{
 const Game: NextPage = () => {
   //const router = useRouter();
   //const { userInfo, setUserInfo } = useContext(AuthContext);
-  const [gameStatus, setGameStatus] = useState<GameRoomStatus>(GameRoomStatus.Lobby)
-  const [showWarning, setShowWarning] = useState<boolean>(false)
+  const [gameStatus, setGameStatus] = useState<GameRoomStatus>(
+    GameRoomStatus.Lobby
+  );
+  const [showWarning, setShowWarning] = useState<boolean>(false);
   const [game, setGame] = useState<Game | null>(null);
-  const warning = useRef("")
+  const warning = useRef("");
   const roomName = useRef<string | null>(null);
   const playerName = useRef<string | null>(null);
   const playerID = useRef<number | null>(null);
@@ -163,8 +162,6 @@ const Game: NextPage = () => {
   const [hand, setHand] = useState<Card[] | null>(null);
   const dragCard = useRef<null | number>(null);
   const dragOverCard = useRef<null | number>(null);
-
-
 
   const joinGame = () => {
     if (!roomName.current || roomName.current == "") {
@@ -176,64 +173,65 @@ const Game: NextPage = () => {
 
     if (client.current !== null) {
       client.current.onopen = () => {
-        setGameStatus(GameRoomStatus.WaitingForOpponent)
+        setGameStatus(GameRoomStatus.WaitingForOpponent);
       };
 
       client.current.onmessage = (message: { data: string }) => {
         let data: InputData | null = null;
         try {
-          data = JSON.parse(message.data)
-        }
-        catch (e) {
-          console.log("failed to parse non-json message")
+          data = JSON.parse(message.data);
+        } catch (e) {
+          console.log("failed to parse non-json message");
           return;
         }
 
         if (data && GameRoomStatus.Filled === gameStatus) {
-          setGame(data.game)
+          setGame(data.game);
         }
 
         if (data && isIAmNotification(data)) {
-          console.log("Got IAM")
-          playerID.current = parseInt(data.content)
+          console.log("Got IAM");
+          playerID.current = parseInt(data.content);
         }
 
         if (data && isOpponentNotification(data)) {
-          console.log("Got OPPONENT")
-          opponentID.current = parseInt(data.content)
+          console.log("Got OPPONENT");
+          opponentID.current = parseInt(data.content);
         }
 
         if (data && isGameUpdateNotification(data)) {
-          console.log("Game Update!")
-          setGame(data.game)
+          console.log("Game Update!");
+          setGame(data.game);
         }
 
         if (data && isStartNotification(data)) {
-          console.log("Got START")
-          setGameStatus(GameRoomStatus.Filled)
-          setGame(data.game)
-
+          console.log("Got START");
+          setGameStatus(GameRoomStatus.Filled);
+          setGame(data.game);
         }
 
-
-        console.log(data)
+        console.log(data);
       };
 
       client.current.onerror = () => {
-        setFadedWarning("Connection to Server Failed, Try Again Later")
-      }
-    };
-  }
+        setFadedWarning("Connection to Server Failed, Try Again Later");
+      };
+    }
+  };
 
   const drawCard = (playerinfo: PlayerInfo, option: string) => {
-    const response: OutputData = { messagetype: "game", command: "draw", content: option, playerinfo: playerinfo }
+    const response: OutputData = {
+      messagetype: "game",
+      command: "draw",
+      content: option,
+      playerinfo: playerinfo,
+    };
     if (client.current) {
-      client.current.send(JSON.stringify(response))
+      client.current.send(JSON.stringify(response));
+    } else {
+      setFadedWarning("No Connection: Try Again Later");
     }
-    else {
-      setFadedWarning("No Connection: Try Again Later")
-    }
-  }
+  };
 
   const discardSelectedCard = () => {
     if (client.current && game && selectedCard && playerID) {
@@ -242,16 +240,14 @@ const Game: NextPage = () => {
         command: "discard",
         content: "",
         card: selectedCard,
-        playerinfo: playerID.current === game.player1.id ? game.player1 : game.player2,
+        playerinfo:
+          playerID.current === game.player1.id ? game.player1 : game.player2,
       };
-      client.current.send(JSON.stringify(response))
+      client.current.send(JSON.stringify(response));
+    } else {
+      setFadedWarning("Error: no connection, or no selection was made");
     }
-    else {
-      setFadedWarning("Error: no connection, or no selection was made")
-    }
-
-
-  }
+  };
 
   function handleOnDragEnd(result: any) {
     if (!result.destination) return;
@@ -262,16 +258,16 @@ const Game: NextPage = () => {
     setHand(items);
   }
 
-  const dragStart = (e:any, position:number) => {
+  const dragStart = (e: any, position: number) => {
     dragCard.current = position;
   };
-  
-  const dragEnter = (e:any, position:number) => {
+
+  const dragEnter = (e: any, position: number) => {
     dragOverCard.current = position;
   };
 
-  const drop = (e:any) => {
-    console.log(dragOverCard.current, dragCard.current)
+  const drop = (e: any) => {
+    console.log(dragOverCard.current, dragCard.current);
     if (!hand) return;
     if (dragCard.current === null) return;
     if (dragOverCard.current === null) return;
@@ -284,72 +280,66 @@ const Game: NextPage = () => {
     setHand(handCopy);
   };
 
-  const setHandPreserveOrder = (serverHand:Card[]) =>{
-    if (!hand){
-      setHand(serverHand)
-      return
+  const setHandPreserveOrder = (serverHand: Card[]) => {
+    if (!hand) {
+      setHand(serverHand);
+      return;
     }
-    const cardMap = new Map<string, number>()
-    const handCopy = [...hand]
-    for (let i=0; i<handCopy.length;i++){
-      cardMap.set(stringifyCard(handCopy[i]), i+1)
+    const cardMap = new Map<string, number>();
+    const handCopy = [...hand];
+    for (let i = 0; i < handCopy.length; i++) {
+      cardMap.set(stringifyCard(handCopy[i]), i + 1);
     }
 
-    const resultHand = [...serverHand]
-    resultHand.sort((a:Card, b:Card)=>{
-      const scoreA = cardMap.get(stringifyCard(a))
-      const scoreB = cardMap.get(stringifyCard(b))
-      if (scoreA && scoreB){
-        return scoreA - scoreB
+    const resultHand = [...serverHand];
+    resultHand.sort((a: Card, b: Card) => {
+      const scoreA = cardMap.get(stringifyCard(a));
+      const scoreB = cardMap.get(stringifyCard(b));
+      if (scoreA && scoreB) {
+        return scoreA - scoreB;
+      } else if (scoreA && !scoreB) {
+        return 1;
+      } else if (scoreB && !scoreA) {
+        return 1;
       }
-      else if (scoreA && !scoreB){
-        return 1
-      }
-      else if (scoreB && !scoreA){
-        return 1
-      }
-      return 0
-    })
-    setHand(resultHand)
-  }
+      return 0;
+    });
+    setHand(resultHand);
+  };
 
   useEffect(() => {
-    console.log("fire use effect")
-    if(!game) return;
-    console.log("game is not null")
+    console.log("fire use effect");
+    if (!game) return;
+    console.log("game is not null");
     if (playerID.current === game.player1.id) {
-      console.log("is player 1")
-      setHandPreserveOrder(game.player1hand)
+      console.log("is player 1");
+      setHandPreserveOrder(game.player1hand);
       //setHand(game.player1hand)
-    }
-    else if (playerID.current === game.player2.id) {
-      console.log("is player 2", game.player2hand)
-      setHandPreserveOrder(game.player2hand)
+    } else if (playerID.current === game.player2.id) {
+      console.log("is player 2", game.player2hand);
+      setHandPreserveOrder(game.player2hand);
       // setHand(game.player2hand)
+    } else {
+      console.log("is niether current players");
     }
-    else {
-      console.log("is niether current players")
-    }
-  }, [game])
+  }, [game]);
 
   const setFadedWarning = (message: string) => {
-    warning.current = message
-    setShowWarning(true)
-    setTimeout(()=>{
-      warning.current = ""
-      setShowWarning(false)
-    }, 2000)
-  }
+    warning.current = message;
+    setShowWarning(true);
+    setTimeout(() => {
+      warning.current = "";
+      setShowWarning(false);
+    }, 2000);
+  };
 
   const toggleSelectedCard = (card: Card) => {
-    if (areCardsEqual(card, selectedCard)){
-      setSelectedCard(null)
-      return
+    if (areCardsEqual(card, selectedCard)) {
+      setSelectedCard(null);
+      return;
     }
-    setSelectedCard(card)
-  }
-
-
+    setSelectedCard(card);
+  };
 
   useEffect(() => {
     // if (!userInfo) {
@@ -359,22 +349,43 @@ const Game: NextPage = () => {
   });
 
   return (
-    <div className="w-screen h-screen flex justify-center items-center flex-column" style={{ backgroundColor: "#FEC5E5", padding: "10px" }}>
-      {showWarning && <Alert variant='danger'> {warning.current} </Alert>}
-      {gameStatus && GameRoomStatus.Filled &&
+    <div
+      className="w-screen h-screen flex justify-center items-center flex-column"
+      style={{ backgroundColor: "#FEC5E5", padding: "10px" }}
+    >
+      {showWarning && <Alert variant="danger"> {warning.current} </Alert>}
+      {gameStatus === GameRoomStatus.Filled && (
         <div>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
             <div style={{ display: "flex" }}>
-              {game && opponentID.current && getHandByID(game, opponentID.current)?.map((card) => {
-                return (
-                  <div style={{}} key={card.suit + card.rank}>
-                    <img width="84" src={"/cards/" + "cardback" + ".png"} alt={"card back"} />
-                  </div>
-                )
-              })}
+              {game &&
+                opponentID.current &&
+                getHandByID(game, opponentID.current)?.map((card) => {
+                  return (
+                    <div style={{}} key={card.suit + card.rank}>
+                      <img
+                        width="84"
+                        src={"/cards/" + "cardback" + ".png"}
+                        alt={"card back"}
+                      />
+                    </div>
+                  );
+                })}
             </div>
             <div style={{ display: "flex", alignItems: "center" }}>
-              {game && <img style={{ height: "110px" }} src={"/cards/" + "cardback" + ".png"} alt={"card back"} />}
+              {game && (
+                <img
+                  style={{ height: "110px" }}
+                  src={"/cards/" + "cardback" + ".png"}
+                  alt={"card back"}
+                />
+              )}
               <h1
                 style={{
                   fontWeight: 900,
@@ -383,35 +394,76 @@ const Game: NextPage = () => {
                   textAlign: "center",
                 }}
               >
-                {game && playerID.current && getTurnByID(game, playerID.current) && "YOUR TURN"}
-                {game && opponentID.current && getTurnByID(game, opponentID.current) && "THEIR TURN"}
+                {game &&
+                  playerID.current &&
+                  getTurnByID(game, playerID.current) &&
+                  "YOUR TURN"}
+                {game &&
+                  opponentID.current &&
+                  getTurnByID(game, opponentID.current) &&
+                  "THEIR TURN"}
               </h1>
-              {game && game.discardpile.length > 0 && <img style={{ height: "100px" }} src={"/cards/" + stringifyCard(getFirstDiscard(game)) + ".png"} alt={stringifyCard(getFirstDiscard(game))} />}
-              {game && game.discardpile.length === 0 && <div style={{ height: "100px", border: "2px solid black", textAlign: "center", borderRadius: "5px", padding: "10px" }}>Empty Discard</div>}
+              {game && game.discardpile.length > 0 && (
+                <img
+                  style={{ height: "100px" }}
+                  src={
+                    "/cards/" + stringifyCard(getFirstDiscard(game)) + ".png"
+                  }
+                  alt={stringifyCard(getFirstDiscard(game))}
+                />
+              )}
+              {game && game.discardpile.length === 0 && (
+                <div
+                  style={{
+                    height: "100px",
+                    border: "2px solid black",
+                    textAlign: "center",
+                    borderRadius: "5px",
+                    padding: "10px",
+                  }}
+                >
+                  Empty Discard
+                </div>
+              )}
             </div>
             <div style={{ display: "flex", gap: "15px" }}>
-              {game && playerID.current && hand &&
+              {game &&
+                playerID.current &&
+                hand &&
                 hand.map((card, i) => {
                   return (
-                    <div style={{cursor:"pointer"}} className={ areCardsEqual(card, selectedCard)? "selected-card": ""} key={i} 
-                    onClick={() => toggleSelectedCard(card)}
-                    onDragStart={(e)=>dragStart(e,i)}
-                    onDragEnter={(e)=>dragEnter(e,i)}
-                    onDragOver={(e)=>e.preventDefault()}
-                    onDragEnd={drop}
-                    draggable
-                    > 
-                    <img width="70" src={"/cards/" + stringifyCard(card) + ".png"} alt={stringifyCard(card)} /> 
+                    <div
+                      style={{ cursor: "pointer" }}
+                      className={
+                        areCardsEqual(card, selectedCard) ? "selected-card" : ""
+                      }
+                      key={i}
+                      onClick={() => toggleSelectedCard(card)}
+                      onDragStart={(e) => dragStart(e, i)}
+                      onDragEnter={(e) => dragEnter(e, i)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDragEnd={drop}
+                      draggable
+                    >
+                      <img
+                        width="70"
+                        src={"/cards/" + stringifyCard(card) + ".png"}
+                        alt={stringifyCard(card)}
+                      />
                     </div>
-                  )
-
-                })
-              }
+                  );
+                })}
             </div>
           </div>
-          {game && playerID.current && getTurnByID(game, playerID.current) &&
-            <div style={{ display: "flex", padding: "15px", justifyContent: "space-around" }}>
-              {game.status === "waitdiscard" &&
+          {game && playerID.current && getTurnByID(game, playerID.current) && (
+            <div
+              style={{
+                display: "flex",
+                padding: "15px",
+                justifyContent: "space-around",
+              }}
+            >
+              {game.status === "waitdiscard" && (
                 <Button
                   variant="primary"
                   type="submit"
@@ -420,14 +472,21 @@ const Game: NextPage = () => {
                 >
                   Discard Selected Card
                 </Button>
-              }
-              {(game.status === "starting" || game.status === "begturn") &&
+              )}
+              {(game.status === "starting" || game.status === "begturn") && (
                 <>
                   <Button
                     variant="primary"
                     type="submit"
                     size="lg"
-                    onClick={() => drawCard(playerID.current === game.player1.id ? game.player1 : game.player2, "stack")}
+                    onClick={() =>
+                      drawCard(
+                        playerID.current === game.player1.id
+                          ? game.player1
+                          : game.player2,
+                        "stack"
+                      )
+                    }
                   >
                     Draw Deck
                   </Button>
@@ -435,21 +494,35 @@ const Game: NextPage = () => {
                     variant="primary"
                     type="submit"
                     size="lg"
-                    onClick={() => drawCard(playerID.current === game.player1.id ? game.player1 : game.player2, "discard")}
+                    onClick={() =>
+                      drawCard(
+                        playerID.current === game.player1.id
+                          ? game.player1
+                          : game.player2,
+                        "discard"
+                      )
+                    }
                   >
                     Draw Discard
                   </Button>
                 </>
-              }
+              )}
             </div>
-
-          }
+          )}
         </div>
-      }
-      {gameStatus !== GameRoomStatus.Filled && <h1 style={{ fontWeight: 900, fontSize: "3.5rem", padding: 30, textAlign: "center" }}>
-        GAME LOBBY
-      </h1>
-      }
+      )}
+      {gameStatus !== GameRoomStatus.Filled && (
+        <h1
+          style={{
+            fontWeight: 900,
+            fontSize: "3.5rem",
+            padding: 30,
+            textAlign: "center",
+          }}
+        >
+          GAME LOBBY
+        </h1>
+      )}
       {gameStatus === GameRoomStatus.Lobby && (
         <Form onSubmit={(e) => e.preventDefault()}>
           <Form.Group className="mb-3" controlId="formBasicEmail">
@@ -484,6 +557,5 @@ const Game: NextPage = () => {
     </div>
   );
 };
-
 
 export default Game;
