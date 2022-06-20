@@ -2,19 +2,11 @@ import type { NextPage } from "next";
 import AuthContext from "./AuthContext";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useState, useRef } from "react";
-import Button from "react-bootstrap/button";
+import Button from "react-bootstrap/Button";
 import Form from "react-bootstrap/Form";
 import Alert from "react-bootstrap/Alert";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { w3cwebsocket as W3CWebSocket } from "websocket";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-
-interface websocket {
-  onopen: Function;
-  onmessage: Function;
-  send: (val: string) => void;
-  onerror: Function;
-}
 
 enum GameRoomStatus {
   Lobby,
@@ -140,9 +132,6 @@ const areCardsEqual = (card1: Card, card2: Card | null) => {
   return true;
 };
 
-// if () {
-//   myID = parseInt(data["content"]);
-// }
 
 const Game: NextPage = () => {
   //const router = useRouter();
@@ -157,7 +146,7 @@ const Game: NextPage = () => {
   const playerName = useRef<string | null>(null);
   const playerID = useRef<number | null>(null);
   const opponentID = useRef<number | null>(null);
-  const client = useRef<websocket | null>(null);
+  const client = useRef<W3CWebSocket | null>(null);
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [hand, setHand] = useState<Card[] | null>(null);
   const dragCard = useRef<null | number>(null);
@@ -176,7 +165,8 @@ const Game: NextPage = () => {
         setGameStatus(GameRoomStatus.WaitingForOpponent);
       };
 
-      client.current.onmessage = (message: { data: string }) => {
+      client.current.onmessage = (message: { data: string | Buffer | ArrayBuffer}) => {
+        if (typeof message.data !== 'string') return;
         let data: InputData | null = null;
         try {
           data = JSON.parse(message.data);
