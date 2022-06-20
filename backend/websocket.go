@@ -6,15 +6,39 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-
 	"gopkg.in/olahol/melody.v1"
 )
 
+type OutputData struct {
+	MessageType string `json:"messagetype"`
+	Command     string `json:"command"`
+	Content     string `json:"content"`
+	Game        Game   `json:"game"`
+}
+
 func connectToGame(s *melody.Session) {
 	LOCK.Lock()
+	gameRoomName := strings.Split(s.Request.URL.Path, "/")[2]
+	gameRoomStatus := getGameRoomStatus(gameRoomName)
+  //I could also like make it so that the player when they try to join, first makes a API call to see if the room is open
+  //if filled, it just closes the connection quickly
+  //seems like the client does not know when their connection closes so like ??? 
+  // if gameRoomStatus == filled {
+  //   message := OutputData {MessageType: "meta", Command: "gameupdate", Content:"room was full"}
+  //   messageStr, err := json.Marshal(message)
+  //   if err != nil {
+  //     fmt.Println("Error: Invalid Json 5")
+  //     return
+  //   }
+  //   s.CloseWithMsg([]byte(messageStr))
+  //   return
+  // }
+
+
+
 	for _, info := range PLAYERS {
 		if s.Request.URL.Path == info.URL {
-			message := WSMetaJSONFormat{MessageType: "meta", Command: "opponent", Content: strconv.Itoa(info.ID)}
+			message := OutputData{MessageType: "meta", Command: "opponent", Content: strconv.Itoa(info.ID)}
 			messageStr, err := json.Marshal(message)
 			if err != nil {
 				fmt.Println("Error: Invalid JSON 1")
@@ -24,9 +48,8 @@ func connectToGame(s *melody.Session) {
 		}
 	}
 
-	gameRoomName := strings.Split(s.Request.URL.Path, "/")[2]
 	PLAYERS[s] = &PlayerInfo{ID: IDCOUNTER, URL: s.Request.URL.Path, GameRoom: gameRoomName}
-	message := WSMetaJSONFormat{MessageType: "meta", Command: "iam", Content: strconv.Itoa(PLAYERS[s].ID)}
+	message := OutputData{MessageType: "meta", Command: "iam", Content: strconv.Itoa(PLAYERS[s].ID)}
 	messageStr, err := json.Marshal(message)
 	if err != nil {
 		fmt.Println("Error: Invalid JSON 2")
@@ -36,7 +59,7 @@ func connectToGame(s *melody.Session) {
 	IDCOUNTER++
 
 	//Telling other players who just joined
-	message = WSMetaJSONFormat{MessageType: "meta", Command: "opponent", Content: strconv.Itoa(PLAYERS[s].ID)}
+	message = OutputData{MessageType: "meta", Command: "opponent", Content: strconv.Itoa(PLAYERS[s].ID)}
 	messageStr, err = json.Marshal(message)
 	if err != nil {
 		fmt.Println("Error: Invalid JSON 3")
@@ -47,7 +70,6 @@ func connectToGame(s *melody.Session) {
 	})
 
 	//Putting Player into a room
-	gameRoomStatus := getGameRoomStatus(gameRoomName)
 	if gameRoomStatus == "nonexistent" {
 		Deck := makeDeck()
 		Player1hand, Deck := MakeHand(Deck)
@@ -71,7 +93,7 @@ func connectToGame(s *melody.Session) {
 	gameRoomStatus = getGameRoomStatus(gameRoomName)
 	if gameRoomStatus == filled {
 		GAMES[gameRoomName].Status = Starting
-		message = WSMetaJSONFormat{MessageType: "meta", Command: "gameroomstatus", Content: "filled", Game: *GAMES[gameRoomName]}
+		message = OutputData{MessageType: "meta", Command: "gameroomstatus", Content: "filled", Game: *GAMES[gameRoomName]}
 		messageStr, err = json.Marshal(message)
 		if err != nil {
 			fmt.Println("Error: Invalid JSON 4")
@@ -234,7 +256,7 @@ func discardCard(game Game, playerNum int, card Card) (Game, error) {
 
 func handleGameMoves(s *melody.Session, msg []byte) {
 	LOCK.Lock()
-	var response WSMetaJSONFormat
+	var response OutputData
 	response.MessageType = "game"
 	response.Command = "gameupdate"
 	var input InputFormat

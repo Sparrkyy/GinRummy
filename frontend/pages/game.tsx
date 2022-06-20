@@ -7,6 +7,7 @@ import Form from "react-bootstrap/Form";
 import Alert from "react-bootstrap/Alert";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { w3cwebsocket as W3CWebSocket } from "websocket";
+import axios from "axios"
 
 enum GameRoomStatus {
   Lobby,
@@ -132,6 +133,7 @@ const areCardsEqual = (card1: Card, card2: Card | null) => {
   return true;
 };
 
+const APIBASENAME = "http://localhost:8080";
 
 const Game: NextPage = () => {
   //const router = useRouter();
@@ -152,20 +154,53 @@ const Game: NextPage = () => {
   const dragCard = useRef<null | number>(null);
   const dragOverCard = useRef<null | number>(null);
 
-  const joinGame = () => {
-    if (!roomName.current || roomName.current == "") {
-      return;
+  const getGameRoomStatus = async (gameRoomName: string) => {
+    console.log(gameRoomName)
+    try {
+      const response = await axios.get(APIBASENAME + '/gameRoomQuery/' + gameRoomName)
+      const jsonResponse = response.data;
+      if (jsonResponse.hasOwnProperty("gameroomstatus")) {
+        return jsonResponse.gameroomstatus
+      } else {
+        console.log("no game room update??");
+      }
+    } catch (e) {
+      console.log("Failed to Verify room status");
+      console.log(e);
+      return null
     }
+  }
+
+
+  const joinGame = async () => {
+    if (!roomName.current || roomName.current == "") return
+
+
+    //getting the game room status of the room we are trying to join
+    const gameroomstatus = await getGameRoomStatus(roomName.current);
+    console.log("game room status", gameroomstatus)
+    if (!gameroomstatus) {
+      setFadedWarning("Error: Unable to get game room status")
+      return;
+    };
+    if (gameroomstatus === "filled") {
+      setFadedWarning("Error: Game room already filled up")
+      return
+    }
+
+
+
     client.current = new W3CWebSocket(
       "ws://localhost:8080/channel/" + roomName.current + "/play"
     );
 
     if (client.current !== null) {
       client.current.onopen = () => {
+        console.log("connection on open")
         setGameStatus(GameRoomStatus.WaitingForOpponent);
       };
 
-      client.current.onmessage = (message: { data: string | Buffer | ArrayBuffer}) => {
+      client.current.onmessage = (message: { data: string | Buffer | ArrayBuffer }) => {
         if (typeof message.data !== 'string') return;
         let data: InputData | null = null;
         try {
@@ -206,6 +241,10 @@ const Game: NextPage = () => {
       client.current.onerror = () => {
         setFadedWarning("Connection to Server Failed, Try Again Later");
       };
+
+      client.current.close = (code, reason) => {
+        console.log("closed:", reason)
+      }
     }
   };
 

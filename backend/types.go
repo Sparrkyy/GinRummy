@@ -93,13 +93,4 @@ type PlayerInfo struct {
 	GameRoom string `json:"gameroom"`
 }
 
-type WSMetaJSONFormat struct {
-	MessageType string `json:"messagetype"`
-	Command     string `json:"command"`
-	Content     string `json:"content"`
-	Game        Game   `json:"game"`
-}
 
-type gameQueryInput struct {
-	GameName string `json:"gameroom" binding:"required"`
-}
