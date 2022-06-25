@@ -73,6 +73,7 @@ const (
 	Starting    = "starting"
 	BegTurn     = "begturn"
 	WaitDiscard = "waitdiscard"
+  GameOver = "gameover"
 )
 
 type Game struct {

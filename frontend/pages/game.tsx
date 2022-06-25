@@ -13,6 +13,7 @@ enum GameRoomStatus {
   Lobby,
   WaitingForOpponent,
   Filled,
+  GameOver,
 }
 
 enum Rank {
@@ -103,6 +104,10 @@ const isGameUpdateNotification = (data: InputData) => {
   return data.command === "gameupdate";
 };
 
+const isGameOverNotification = (data: InputData) => {
+  return data.command === "gameover";
+}
+
 const stringifyCard = (card: Card) => {
   return card.suit + card.rank;
 };
@@ -179,16 +184,16 @@ const Game: NextPage = () => {
     //getting the game room status of the room we are trying to join
     const gameroomstatus = await getGameRoomStatus(roomName.current);
     console.log("game room status", gameroomstatus)
+
     if (!gameroomstatus) {
       setFadedWarning("Error: Unable to get game room status")
       return;
     };
+
     if (gameroomstatus === "filled") {
-      setFadedWarning("Error: Game room already filled up")
+      setFadedWarning("Error: Game room already filled")
       return
     }
-
-
 
     client.current = new W3CWebSocket(
       "ws://localhost:8080/channel/" + roomName.current + "/play"
@@ -235,6 +240,12 @@ const Game: NextPage = () => {
           setGame(data.game);
         }
 
+        if (data && isGameOverNotification(data)) {
+          console.log("Game End!!")
+          setGameStatus(GameRoomStatus.GameOver)
+          setGame(data.game)
+        }
+
         console.log(data);
       };
 
@@ -244,6 +255,7 @@ const Game: NextPage = () => {
 
       client.current.close = (code, reason) => {
         console.log("closed:", reason)
+        setFadedWarning("Connection Closed With Server");
       }
     }
   };
@@ -277,6 +289,35 @@ const Game: NextPage = () => {
       setFadedWarning("Error: no connection, or no selection was made");
     }
   };
+
+  const sendEndGame = () => {
+    if (!game) return;
+    if (!client.current) return;
+
+    if (playerID.current === game.player1.id) {
+      const response: OutputData = {
+        messagetype: "game",
+        command: "gameover",
+        content: "",
+        card: undefined,
+        playerinfo: game.player1
+      }
+      client.current.send(JSON.stringify(response))
+    }
+    else if (playerID.current === game.player2.id) {
+      const response: OutputData = {
+        messagetype: "game",
+        command: "gameover",
+        content: "",
+        card: undefined,
+        playerinfo: game.player2
+      }
+      client.current.send(JSON.stringify(response))
+    }
+    else {
+      setFadedWarning("Error: You are not a recored player in the current game")
+    }
+  }
 
   function handleOnDragEnd(result: any) {
     if (!result.destination) return;
@@ -533,6 +574,14 @@ const Game: NextPage = () => {
                     }
                   >
                     Draw Discard
+                  </Button>
+                  <Button
+                    variant="primary"
+                    type="submit"
+                    size="lg"
+                    onClick={() => sendEndGame()}
+                  >
+                    Knock
                   </Button>
                 </>
               )}

@@ -282,9 +282,7 @@ func handleGameMoves(s *melody.Session, msg []byte) {
 			GAMES[input.Player.GameRoom] = &game
 			response.Game = *GAMES[input.Player.GameRoom]
     }
-	}
-
-	if input.Command == "discard" {
+	} else if input.Command == "discard" {
 		var game Game
 		game = *GAMES[input.Player.GameRoom]
 		game, err := discardCard(game, input.Player.ID, input.Card)
@@ -302,7 +300,14 @@ func handleGameMoves(s *melody.Session, msg []byte) {
 		}
 		GAMES[input.Player.GameRoom] = &game
 		response.Game = *GAMES[input.Player.GameRoom]
-	}
+  } else if input.Command == "gameover"{
+		var game Game
+		game = *GAMES[input.Player.GameRoom]
+    game.Status = GameOver;
+		GAMES[input.Player.GameRoom] = &game
+		response.Game = *GAMES[input.Player.GameRoom]
+    response.Command = GameOver;
+  }
 
 	result, err := json.Marshal(response)
 	if err != nil {
