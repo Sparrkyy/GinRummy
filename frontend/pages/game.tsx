@@ -7,7 +7,7 @@ import Form from "react-bootstrap/Form";
 import Alert from "react-bootstrap/Alert";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { w3cwebsocket as W3CWebSocket } from "websocket";
-import axios from "axios"
+import axios from "axios";
 
 enum GameRoomStatus {
   Lobby,
@@ -106,7 +106,7 @@ const isGameUpdateNotification = (data: InputData) => {
 
 const isGameOverNotification = (data: InputData) => {
   return data.command === "gameover";
-}
+};
 
 const stringifyCard = (card: Card) => {
   return card.suit + card.rank;
@@ -160,39 +160,39 @@ const Game: NextPage = () => {
   const dragOverCard = useRef<null | number>(null);
 
   const getGameRoomStatus = async (gameRoomName: string) => {
-    console.log(gameRoomName)
+    console.log(gameRoomName);
     try {
-      const response = await axios.get(APIBASENAME + '/gameRoomQuery/' + gameRoomName)
+      const response = await axios.get(
+        APIBASENAME + "/gameRoomQuery/" + gameRoomName
+      );
       const jsonResponse = response.data;
       if (jsonResponse.hasOwnProperty("gameroomstatus")) {
-        return jsonResponse.gameroomstatus
+        return jsonResponse.gameroomstatus;
       } else {
         console.log("no game room update??");
       }
     } catch (e) {
       console.log("Failed to Verify room status");
       console.log(e);
-      return null
+      return null;
     }
-  }
-
+  };
 
   const joinGame = async () => {
-    if (!roomName.current || roomName.current == "") return
-
+    if (!roomName.current || roomName.current == "") return;
 
     //getting the game room status of the room we are trying to join
     const gameroomstatus = await getGameRoomStatus(roomName.current);
-    console.log("game room status", gameroomstatus)
+    console.log("game room status", gameroomstatus);
 
     if (!gameroomstatus) {
-      setFadedWarning("Error: Unable to get game room status")
+      setFadedWarning("Error: Unable to get game room status");
       return;
-    };
+    }
 
     if (gameroomstatus === "filled") {
-      setFadedWarning("Error: Game room already filled")
-      return
+      setFadedWarning("Error: Game room already filled");
+      return;
     }
 
     client.current = new W3CWebSocket(
@@ -201,12 +201,14 @@ const Game: NextPage = () => {
 
     if (client.current !== null) {
       client.current.onopen = () => {
-        console.log("connection on open")
+        console.log("connection on open");
         setGameStatus(GameRoomStatus.WaitingForOpponent);
       };
 
-      client.current.onmessage = (message: { data: string | Buffer | ArrayBuffer }) => {
-        if (typeof message.data !== 'string') return;
+      client.current.onmessage = (message: {
+        data: string | Buffer | ArrayBuffer;
+      }) => {
+        if (typeof message.data !== "string") return;
         let data: InputData | null = null;
         try {
           data = JSON.parse(message.data);
@@ -241,9 +243,9 @@ const Game: NextPage = () => {
         }
 
         if (data && isGameOverNotification(data)) {
-          console.log("Game End!!")
-          setGameStatus(GameRoomStatus.GameOver)
-          setGame(data.game)
+          console.log("Game End!!");
+          setGameStatus(GameRoomStatus.GameOver);
+          setGame(data.game);
         }
 
         console.log(data);
@@ -254,9 +256,9 @@ const Game: NextPage = () => {
       };
 
       client.current.close = (code, reason) => {
-        console.log("closed:", reason)
+        console.log("closed:", reason);
         setFadedWarning("Connection Closed With Server");
-      }
+      };
     }
   };
 
@@ -300,24 +302,24 @@ const Game: NextPage = () => {
         command: "gameover",
         content: "",
         card: undefined,
-        playerinfo: game.player1
-      }
-      client.current.send(JSON.stringify(response))
-    }
-    else if (playerID.current === game.player2.id) {
+        playerinfo: game.player1,
+      };
+      client.current.send(JSON.stringify(response));
+    } else if (playerID.current === game.player2.id) {
       const response: OutputData = {
         messagetype: "game",
         command: "gameover",
         content: "",
         card: undefined,
-        playerinfo: game.player2
-      }
-      client.current.send(JSON.stringify(response))
+        playerinfo: game.player2,
+      };
+      client.current.send(JSON.stringify(response));
+    } else {
+      setFadedWarning(
+        "Error: You are not a recored player in the current game"
+      );
     }
-    else {
-      setFadedWarning("Error: You are not a recored player in the current game")
-    }
-  }
+  };
 
   function handleOnDragEnd(result: any) {
     if (!result.destination) return;
@@ -424,6 +426,46 @@ const Game: NextPage = () => {
       style={{ backgroundColor: "#FEC5E5", padding: "10px" }}
     >
       {showWarning && <Alert variant="danger"> {warning.current} </Alert>}
+      {gameStatus === GameRoomStatus.GameOver && (
+      <div style={{}}>
+          <h1
+            style={{
+              fontWeight: 900,
+              fontSize: "2.5rem",
+              textAlign: "center",
+            }}
+          >
+          GAME ENDED 
+          </h1>
+        <h1>Player 1 Hand {game?.player1.id === playerID.current? "(Yours)": ""}</h1>
+        <div style={{display:"flex", gap: "3px"}}>
+          {game &&
+            game.player1hand.map((card) => {
+              return (
+                <img
+                  width="70"
+                  src={"/cards/" + stringifyCard(card) + ".png"}
+                  alt={stringifyCard(card)}
+                />
+              );
+            })}
+        </div>
+        <h1>Player 2 Hand {game?.player2.id === playerID.current? "(Yours)": ""}</h1>
+        <div style={{display:"flex", gap: "3px"}}>
+          {game &&
+            game.player2hand.map((card) => {
+              return (
+                <img
+                  width="70"
+                  src={"/cards/" + stringifyCard(card) + ".png"}
+                  alt={stringifyCard(card)}
+                />
+              );
+            })}
+        </div>
+
+      </div>
+      )}
       {gameStatus === GameRoomStatus.Filled && (
         <div>
           <div
@@ -589,18 +631,6 @@ const Game: NextPage = () => {
           )}
         </div>
       )}
-      {gameStatus !== GameRoomStatus.Filled && (
-        <h1
-          style={{
-            fontWeight: 900,
-            fontSize: "3.5rem",
-            padding: 30,
-            textAlign: "center",
-          }}
-        >
-          GAME LOBBY
-        </h1>
-      )}
       {gameStatus === GameRoomStatus.Lobby && (
         <Form onSubmit={(e) => e.preventDefault()}>
           <Form.Group className="mb-3" controlId="formBasicEmail">
@@ -628,9 +658,21 @@ const Game: NextPage = () => {
         </Form>
       )}
       {gameStatus === GameRoomStatus.WaitingForOpponent && (
-        <h1 style={{ fontWeight: 900, fontSize: "2rem" }}>
-          You are currently waiting in {roomName.current}
-        </h1>
+        <div>
+          <h1
+            style={{
+              fontWeight: 900,
+              fontSize: "3.5rem",
+              padding: 30,
+              textAlign: "center",
+            }}
+          >
+            GAME LOBBY
+          </h1>
+          <h1 style={{ fontWeight: 900, fontSize: "2rem" }}>
+            You are currently waiting in {roomName.current}
+          </h1>
+        </div>
       )}
     </div>
   );
