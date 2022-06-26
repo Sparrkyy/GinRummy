@@ -380,19 +380,13 @@ const Game: NextPage = () => {
   };
 
   useEffect(() => {
-    console.log("fire use effect");
     if (!game) return;
-    console.log("game is not null");
     if (playerID.current === game.player1.id) {
-      console.log("is player 1");
       setHandPreserveOrder(game.player1hand);
-      //setHand(game.player1hand)
     } else if (playerID.current === game.player2.id) {
-      console.log("is player 2", game.player2hand);
       setHandPreserveOrder(game.player2hand);
-      // setHand(game.player2hand)
     } else {
-      console.log("is niether current players");
+      console.log("Error: hand belongs to neither of the current players");
     }
   }, [game]);
 
@@ -427,7 +421,7 @@ const Game: NextPage = () => {
     >
       {showWarning && <Alert variant="danger"> {warning.current} </Alert>}
       {gameStatus === GameRoomStatus.GameOver && (
-      <div style={{}}>
+        <div style={{}}>
           <h1
             style={{
               fontWeight: 900,
@@ -435,36 +429,41 @@ const Game: NextPage = () => {
               textAlign: "center",
             }}
           >
-          GAME ENDED 
+            GAME ENDED
           </h1>
-        <h1>Player 1 Hand {game?.player1.id === playerID.current? "(Yours)": ""}</h1>
-        <div style={{display:"flex", gap: "3px"}}>
-          {game &&
-            game.player1hand.map((card) => {
-              return (
-                <img
-                  width="70"
-                  src={"/cards/" + stringifyCard(card) + ".png"}
-                  alt={stringifyCard(card)}
-                />
-              );
-            })}
+          <h1>
+            Player 1 Hand{" "}
+            {game?.player1.id === playerID.current ? "(Yours)" : ""}
+          </h1>
+          <div style={{ display: "flex", gap: "3px" }}>
+            {game &&
+              game.player1hand.map((card) => {
+                return (
+                  <img
+                    width="70"
+                    src={"/cards/" + stringifyCard(card) + ".png"}
+                    alt={stringifyCard(card)}
+                  />
+                );
+              })}
+          </div>
+          <h1>
+            Player 2 Hand{" "}
+            {game?.player2.id === playerID.current ? "(Yours)" : ""}
+          </h1>
+          <div style={{ display: "flex", gap: "3px" }}>
+            {game &&
+              game.player2hand.map((card) => {
+                return (
+                  <img
+                    width="70"
+                    src={"/cards/" + stringifyCard(card) + ".png"}
+                    alt={stringifyCard(card)}
+                  />
+                );
+              })}
+          </div>
         </div>
-        <h1>Player 2 Hand {game?.player2.id === playerID.current? "(Yours)": ""}</h1>
-        <div style={{display:"flex", gap: "3px"}}>
-          {game &&
-            game.player2hand.map((card) => {
-              return (
-                <img
-                  width="70"
-                  src={"/cards/" + stringifyCard(card) + ".png"}
-                  alt={stringifyCard(card)}
-                />
-              );
-            })}
-        </div>
-
-      </div>
       )}
       {gameStatus === GameRoomStatus.Filled && (
         <div>
@@ -631,6 +630,19 @@ const Game: NextPage = () => {
           )}
         </div>
       )}
+      {(gameStatus === GameRoomStatus.Lobby ||
+        gameStatus === GameRoomStatus.WaitingForOpponent) && (
+        <h1
+          style={{
+            fontWeight: 900,
+            fontSize: "3.5rem",
+            padding: 30,
+            textAlign: "center",
+          }}
+        >
+          GAME LOBBY
+        </h1>
+      )}
       {gameStatus === GameRoomStatus.Lobby && (
         <Form onSubmit={(e) => e.preventDefault()}>
           <Form.Group className="mb-3" controlId="formBasicEmail">
@@ -659,16 +671,6 @@ const Game: NextPage = () => {
       )}
       {gameStatus === GameRoomStatus.WaitingForOpponent && (
         <div>
-          <h1
-            style={{
-              fontWeight: 900,
-              fontSize: "3.5rem",
-              padding: 30,
-              textAlign: "center",
-            }}
-          >
-            GAME LOBBY
-          </h1>
           <h1 style={{ fontWeight: 900, fontSize: "2rem" }}>
             You are currently waiting in {roomName.current}
           </h1>
