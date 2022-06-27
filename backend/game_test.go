@@ -64,3 +64,20 @@ func TestRemoveCard(t *testing.T){
   }
   
 }
+
+func TestFindHandScore(t *testing.T){
+  // deck := makeDeck()
+  // hand,deck := MakeHand(deck);
+  // hand = findHandScore(hand)
+  hand := []Card{
+    {1, Spades},
+    {1, Hearts},
+    {1, Clubs},
+    {2, Clubs},
+    {3, Clubs},
+    {4, Clubs},
+  }
+
+  hand = findHandScore(hand)
+
+}
