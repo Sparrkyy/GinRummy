@@ -3,6 +3,7 @@ package main
 import "sort"
 import "fmt"
 import "encoding/json"
+import "math"
 
 func deepCopyHand(hand []Card) *[]Card {
 	newHand := make([]Card, len(hand))
@@ -67,7 +68,26 @@ func doSetsContainDups(set1 []Card, set2 []Card) bool{
   return false
 }
 
-func getExcludedCards(hand []Card, compare []Card){
+func getExcludedCards(hand []Card, compare []Card) []Card{
+  compareMap := make(map[string]bool)
+  var excludedCards []Card;
+  for _, card := range compare{
+    compareMap[stringifyCard(card)] = true
+  }
+  for _, card := range hand {
+    _, exists := compareMap[stringifyCard(card)]
+    if !exists {
+      excludedCards = append(excludedCards, card)
+    }
+  }
+  return excludedCards
+}
+
+func getCardScore(card Card) int {
+  if card.Rank >= 10 {
+    return 10
+  }
+  return int(card.Rank)
 }
 
 
@@ -127,9 +147,20 @@ func findHandScore(hand []Card) []Card {
 	}
 
   var emptyPerm [][]Card;
+  bestScore := math.MaxInt
+  var bestSet [][]Card
   getPermutations(sets, 0, emptyPerm, func (cards [][]Card) {
-    fmt.Println(cards)
+    exclusedCards := getExcludedCards(hand, flattenSets(cards))
+    score := 0
+    for _,card := range exclusedCards {
+      score += getCardScore(card)
+    }
+    if score < bestScore {
+      bestScore = score
+      bestSet = cards
+    }
   })
+  fmt.Println(bestScore, bestSet)
 
 
 	// for _, set := range sets {
