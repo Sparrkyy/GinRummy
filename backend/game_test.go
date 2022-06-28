@@ -73,9 +73,12 @@ func TestFindHandScore(t *testing.T){
     {1, Spades},
     {1, Hearts},
     {1, Clubs},
+    {1, Diamonds},
     {2, Clubs},
     {3, Clubs},
     {4, Clubs},
+    {5, Clubs},
+    {6, Clubs},
   }
 
   hand = findHandScore(hand)
