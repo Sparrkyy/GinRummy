@@ -238,6 +238,14 @@ func discardCard(game Game, playerNum int, card Card) (Game, error) {
 	return game, nil
 }
 
+func canKnock(hand []Card) bool{
+  score, _ := findHandScore(hand)
+  if score <= 10 {
+    return true
+  }
+  return false
+}
+
 
 func handleGameMoves(s *melody.Session, msg []byte) {
 	LOCK.Lock()
@@ -283,6 +291,8 @@ func handleGameMoves(s *melody.Session, msg []byte) {
 		} else if game.Turn == game.Player2.ID {
 			game.Turn = game.Player1.ID
 		}
+    game.CanPlayer1Knock = canKnock(*game.Player1hand)
+    game.CanPlayer2Knock = canKnock(*game.Player2hand)
 		GAMES[input.Player.GameRoom] = &game
 		response.Game = *GAMES[input.Player.GameRoom]
   } else if input.Command == "gameover"{

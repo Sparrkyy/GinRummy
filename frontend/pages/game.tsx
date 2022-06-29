@@ -60,12 +60,15 @@ interface Game {
   discardpile: Card[];
   status: GameStatus;
   name: string;
+  canplayer1knock: boolean;
+  canplayer2knock: boolean;
 }
 
 interface PlayerInfo {
   id: number;
   url: string;
   gameroom: string;
+  name: string;
 }
 
 interface OutputData {
@@ -138,7 +141,6 @@ const areCardsEqual = (card1: Card, card2: Card | null) => {
   return true;
 };
 
-
 const Game: NextPage = () => {
   const router = useRouter();
   //const { userInfo, setUserInfo } = useContext(AuthContext);
@@ -159,21 +161,22 @@ const Game: NextPage = () => {
   const dragOverCard = useRef<null | number>(null);
   const player1ScoreRef = useRef<null | string>(null);
   const player2ScoreRef = useRef<null | string>(null);
-  const APIBASENAME = useRef<string | null>(null)
+  const APIBASENAME = useRef<string | null>(null);
 
-  useEffect(()=>{
-    const w = window.location.href.split(":")
-    APIBASENAME.current = w[1] + ":8080"
-  })
+  useEffect(() => {
+    const w = window.location.href.split(":");
+    APIBASENAME.current = w[1] + ":8080";
+  });
 
   const getGameRoomStatus = async (gameRoomName: string) => {
     if (!APIBASENAME.current) {
       setFadedWarning("Error: Bad URL name");
-      return
+      return;
     }
     try {
-      const url = "http:" + APIBASENAME.current + "/gameRoomQuery/" + gameRoomName
-      console.log(url)
+      const url =
+        "http:" + APIBASENAME.current + "/gameRoomQuery/" + gameRoomName;
+      console.log(url);
       const response = await axios.get(url);
       const jsonResponse = response.data;
       if (jsonResponse.hasOwnProperty("gameroomstatus")) {
@@ -205,8 +208,9 @@ const Game: NextPage = () => {
       return;
     }
 
-    const url = "ws:" + APIBASENAME.current + "/channel/" + roomName.current + "/play"
-    console.log(url)
+    const url =
+      "ws:" + APIBASENAME.current + "/channel/" + roomName.current + "/play";
+    console.log(url);
     client.current = new W3CWebSocket(url);
 
     if (client.current !== null) {
@@ -255,9 +259,9 @@ const Game: NextPage = () => {
         if (data && isGameOverNotification(data)) {
           console.log("Game End!!");
           setGameStatus(GameRoomStatus.GameOver);
-          const [player1score, player2score] = data.content.split(" ")
-          player1ScoreRef.current = player1score
-          player2ScoreRef.current = player2score
+          const [player1score, player2score] = data.content.split(" ");
+          player1ScoreRef.current = player1score;
+          player2ScoreRef.current = player2score;
           setGame(data.game);
         }
 
@@ -274,6 +278,7 @@ const Game: NextPage = () => {
       };
     }
   };
+
 
   const drawCard = (playerinfo: PlayerInfo, option: string) => {
     const response: OutputData = {
@@ -447,7 +452,9 @@ const Game: NextPage = () => {
           <h1>
             Player 1 Hand{" "}
             {game?.player1.id === playerID.current ? "(Yours)" : ""}
-            {player1ScoreRef.current ? " - Score: " + player1ScoreRef.current: ""}
+            {player1ScoreRef.current
+              ? " - Score: " + player1ScoreRef.current
+              : ""}
           </h1>
           <div style={{ display: "flex", gap: "3px" }}>
             {game &&
@@ -465,7 +472,9 @@ const Game: NextPage = () => {
           <h1>
             Player 2 Hand{" "}
             {game?.player2.id === playerID.current ? "(Yours)" : ""}
-            {player2ScoreRef.current ? " - Score: " + player2ScoreRef.current: ""}
+            {player2ScoreRef.current
+              ? " - Score: " + player2ScoreRef.current
+              : ""}
           </h1>
           <div style={{ display: "flex", gap: "3px" }}>
             {game &&
@@ -633,14 +642,28 @@ const Game: NextPage = () => {
                   >
                     Draw Discard
                   </Button>
-                  <Button
-                    variant="primary"
-                    type="submit"
-                    size="lg"
-                    onClick={() => sendEndGame()}
-                  >
-                    Knock
-                  </Button>
+                  {playerID.current === game.player1.id &&
+                    game.canplayer1knock && (
+                      <Button
+                        variant="primary"
+                        type="submit"
+                        size="lg"
+                        onClick={() => sendEndGame()}
+                      >
+                        Knock
+                      </Button>
+                    )}
+                  {playerID.current === game.player2.id &&
+                    game.canplayer2knock && (
+                      <Button
+                        variant="primary"
+                        type="submit"
+                        size="lg"
+                        onClick={() => sendEndGame()}
+                      >
+                        Knock
+                      </Button>
+                    )}
                 </>
               )}
             </div>

@@ -86,6 +86,8 @@ type Game struct {
 	DiscardPile *[]Card    `json:"discardpile"`
 	Status      GameStatus `json:"status"`
 	Name        string     `json:"name"`
+  CanPlayer1Knock bool `json:"canplayer1knock"`
+  CanPlayer2Knock bool `json:"canplayer2knock"`
 }
 
 type PlayerInfo struct {
