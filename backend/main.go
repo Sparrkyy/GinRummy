@@ -208,15 +208,15 @@ func intializeWSvars() {
 	GAMES = make(map[string]*Game)
 }
 
+
 func gameRoomQuery(c *gin.Context) {
-	var input gameQueryInput
-	err := c.ShouldBindJSON(&input)
-	if err != nil {
-		fmt.Println(err.Error())
-		c.JSON(http.StatusBadRequest, "Failed: incorrect input")
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"gameroomstatus": getGameRoomStatus(input.GameName)})
+  gamename := c.Params.ByName("name")
+  if gamename == "" {
+    fmt.Println("No name found")
+  }
+  gameStatus := getGameRoomStatus(gamename)
+  fmt.Println(gameStatus)
+	c.JSON(http.StatusOK, gin.H{"gameroomstatus": gameStatus})
 }
 
 func getGameRoomStatus(val string) GameRoomStatus {
@@ -243,6 +243,9 @@ func main() {
 	router.Use(cors.Default())
 	router.POST("/login", loginEndpoint)
 	router.POST("/signup", signupEndpoint)
-	router.GET("/gameRoomQuery", gameRoomQuery)
+  router.GET("/gameRoomQuery/:name", gameRoomQuery)
+  router.GET("/helloworld", func (c *gin.Context) {
+    c.JSON(200, gin.H{ "message": "hello world"})
+  })
 	router.Run("localhost:8080")
 }

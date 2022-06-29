@@ -73,6 +73,7 @@ const (
 	Starting    = "starting"
 	BegTurn     = "begturn"
 	WaitDiscard = "waitdiscard"
+  GameOver = "gameover"
 )
 
 type Game struct {
@@ -91,15 +92,7 @@ type PlayerInfo struct {
 	ID       int    `json:"id"`
 	URL      string `json:"url"`
 	GameRoom string `json:"gameroom"`
+  Name string `json:"name"`
 }
 
-type WSMetaJSONFormat struct {
-	MessageType string `json:"messagetype"`
-	Command     string `json:"command"`
-	Content     string `json:"content"`
-	Game        Game   `json:"game"`
-}
 
-type gameQueryInput struct {
-	GameName string `json:"gameroom" binding:"required"`
-}

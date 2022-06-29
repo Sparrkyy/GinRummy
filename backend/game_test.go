@@ -1,7 +1,7 @@
 package main
 
 import "testing"
-//import "fmt"
+// import "fmt"
 
 func TestMakeDeck(t *testing.T) {
   var deck *[]Card;
@@ -63,4 +63,79 @@ func TestRemoveCard(t *testing.T){
     }
   }
   
+}
+
+func TestFindHandScore(t *testing.T){
+  hand := []Card{
+    {1, Spades},
+    {1, Hearts},
+    {1, Clubs},
+    {1, Diamonds},
+    {2, Clubs},
+    {3, Clubs},
+    {4, Clubs},
+    {5, Clubs},
+    {6, Clubs},
+    {9, Clubs},
+  }
+
+  score, besthand := findHandScore(hand)
+  if score != 9{
+    t.Fatal("wrong score given for hand", score, besthand)
+  }
+
+  hand2 := []Card{
+    {1, Spades},
+    {1, Hearts},
+    {3, Clubs},
+    {5, Clubs},
+    {12, Clubs},
+    {12, Clubs},
+  }
+
+  score2, besthand := findHandScore(hand2)
+  if score2 != 30 {
+    t.Fatal("wrong score given for hand", score2, besthand)
+  }
+  
+  hand3 := []Card{
+    {1, Spades},
+    {1, Diamonds},
+    {1, Clubs},
+    {2, Spades},
+    {2, Hearts},
+    {2, Diamonds},
+    {3, Spades},
+    {3, Hearts},
+    {3, Diamonds},
+    {3, Clubs},
+  }
+
+  score3, besthand := findHandScore(hand3)
+  if score3 != 0 {
+    t.Fatal("wrong score given for hand", score3, besthand)
+  }
+
+  hand4 := []Card{
+    {3, Spades},
+    {4, Spades},
+    {5, Spades},
+    {5, Hearts},
+    {6, Hearts},
+    {7, Hearts},
+    {5, Spades},
+    {6, Spades},
+    {7, Spades},
+    {8, Spades},
+  }
+
+  score4, besthand := findHandScore(hand4)
+  if score4 != 0 {
+    t.Fatal("wrong score given for hand", score4, besthand)
+  }
+
+
+
+
+
 }

@@ -7,7 +7,7 @@ import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { FormEventHandler, useRef, useContext } from "react";
-import axois from "axios";
+import axios from "axios";
 import AuthContext from "./AuthContext";
 
 const APIBASENAME = "http://localhost:8080";
@@ -21,7 +21,7 @@ const Home: NextPage = () => {
   const login: FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
     try {
-      const response = await axois.post(APIBASENAME + "/login", {
+      const response = await axios.post(APIBASENAME + "/login", {
         username: username.current,
         password: password.current,
       });
