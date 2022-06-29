@@ -205,9 +205,9 @@ const Game: NextPage = () => {
       return;
     }
 
-    client.current = new W3CWebSocket(
-      "ws://localhost:8080/channel/" + roomName.current + "/play"
-    );
+    const url = "ws://" + APIBASENAME.current + "/channel/" + roomName.current + "/play"
+    console.log(url)
+    client.current = new W3CWebSocket(url);
 
     if (client.current !== null) {
       client.current.onopen = () => {
