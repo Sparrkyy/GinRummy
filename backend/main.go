@@ -247,5 +247,5 @@ func main() {
   router.GET("/helloworld", func (c *gin.Context) {
     c.JSON(200, gin.H{ "message": "hello world"})
   })
-	router.Run("localhost:8080")
+	router.Run(":8080")
 }

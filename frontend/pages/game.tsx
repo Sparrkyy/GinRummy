@@ -138,10 +138,9 @@ const areCardsEqual = (card1: Card, card2: Card | null) => {
   return true;
 };
 
-const APIBASENAME = "http://localhost:8080";
 
 const Game: NextPage = () => {
-  //const router = useRouter();
+  const router = useRouter();
   //const { userInfo, setUserInfo } = useContext(AuthContext);
   const [gameStatus, setGameStatus] = useState<GameRoomStatus>(
     GameRoomStatus.Lobby
@@ -160,13 +159,22 @@ const Game: NextPage = () => {
   const dragOverCard = useRef<null | number>(null);
   const player1ScoreRef = useRef<null | string>(null);
   const player2ScoreRef = useRef<null | string>(null);
+  const APIBASENAME = useRef<string | null>(null)
+
+  useEffect(()=>{
+    const w = window.location.href.split(":")
+    APIBASENAME.current = w[0] + ":" + w[1] + ":8080"
+  })
 
   const getGameRoomStatus = async (gameRoomName: string) => {
-    console.log(gameRoomName);
+    if (!APIBASENAME.current) {
+      setFadedWarning("Error: Bad URL name");
+      return
+    }
     try {
-      const response = await axios.get(
-        APIBASENAME + "/gameRoomQuery/" + gameRoomName
-      );
+      const url = APIBASENAME.current + "/gameRoomQuery/" + gameRoomName
+      console.log(url)
+      const response = await axios.get(url);
       const jsonResponse = response.data;
       if (jsonResponse.hasOwnProperty("gameroomstatus")) {
         return jsonResponse.gameroomstatus;

@@ -6,22 +6,27 @@ import { useRouter } from "next/router";
 import Form from "react-bootstrap/Form";
 import Button from "react-bootstrap/Button";
 import "bootstrap/dist/css/bootstrap.min.css";
-import { FormEventHandler, useRef, useContext } from "react";
+import { FormEventHandler, useRef, useContext, useEffect } from "react";
 import axios from "axios";
 import AuthContext from "../utils/AuthContext";
 
-const APIBASENAME = "http://localhost:8080";
 
 const Home: NextPage = () => {
   //const { userInfo, setUserInfo } = useContext(AuthContext);
   const username = useRef("");
   const password = useRef("");
   const router = useRouter();
+  const APIBASENAME = useRef<string | null>(null)
+
+  useEffect(()=>{
+    const w = window.location.href
+    APIBASENAME.current = w[0] + ":" + w[1] + ":8080"
+  })
 
   const login: FormEventHandler<HTMLFormElement> = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(APIBASENAME + "/login", {
+      const response = await axios.post(APIBASENAME.current + "/login", {
         username: username.current,
         password: password.current,
       });
