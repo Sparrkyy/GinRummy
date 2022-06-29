@@ -13,7 +13,7 @@ import AuthContext from "./AuthContext";
 const APIBASENAME = "http://localhost:8080";
 
 const Home: NextPage = () => {
-  const { userInfo, setUserInfo } = useContext(AuthContext);
+  //const { userInfo, setUserInfo } = useContext(AuthContext);
   const username = useRef("");
   const password = useRef("");
   const router = useRouter();
@@ -28,7 +28,7 @@ const Home: NextPage = () => {
       const jsonResponse = response.data;
       if (jsonResponse.hasOwnProperty("jwt")) {
         console.log(response.data);
-        setUserInfo(response.data);
+        //setUserInfo(response.data);
         router.push("/game");
       } else {
         console.log("no jwt??");
