@@ -1,5 +1,5 @@
 import type { NextPage } from "next";
-import AuthContext from "./AuthContext";
+import AuthContext from "../utils/AuthContext";
 import { useRouter } from "next/router";
 import { useContext, useEffect, useState, useRef } from "react";
 import Button from "react-bootstrap/Button";
@@ -446,6 +446,7 @@ const Game: NextPage = () => {
               game.player1hand.map((card) => {
                 return (
                   <img
+                    key={stringifyCard(card)}
                     width="70"
                     src={"/cards/" + stringifyCard(card) + ".png"}
                     alt={stringifyCard(card)}
@@ -463,6 +464,7 @@ const Game: NextPage = () => {
               game.player2hand.map((card) => {
                 return (
                   <img
+                    key={stringifyCard(card)}
                     width="70"
                     src={"/cards/" + stringifyCard(card) + ".png"}
                     alt={stringifyCard(card)}

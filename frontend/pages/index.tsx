@@ -8,7 +8,7 @@ import Button from "react-bootstrap/Button";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { FormEventHandler, useRef, useContext } from "react";
 import axios from "axios";
-import AuthContext from "./AuthContext";
+import AuthContext from "../utils/AuthContext";
 
 const APIBASENAME = "http://localhost:8080";
 
