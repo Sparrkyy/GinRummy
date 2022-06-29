@@ -158,6 +158,8 @@ const Game: NextPage = () => {
   const [hand, setHand] = useState<Card[] | null>(null);
   const dragCard = useRef<null | number>(null);
   const dragOverCard = useRef<null | number>(null);
+  const player1ScoreRef = useRef<null | string>(null);
+  const player2ScoreRef = useRef<null | string>(null);
 
   const getGameRoomStatus = async (gameRoomName: string) => {
     console.log(gameRoomName);
@@ -245,6 +247,9 @@ const Game: NextPage = () => {
         if (data && isGameOverNotification(data)) {
           console.log("Game End!!");
           setGameStatus(GameRoomStatus.GameOver);
+          const [player1score, player2score] = data.content.split(" ")
+          player1ScoreRef.current = player1score
+          player2ScoreRef.current = player2score
           setGame(data.game);
         }
 
@@ -434,6 +439,7 @@ const Game: NextPage = () => {
           <h1>
             Player 1 Hand{" "}
             {game?.player1.id === playerID.current ? "(Yours)" : ""}
+            {player1ScoreRef.current ? " - Score: " + player1ScoreRef.current: ""}
           </h1>
           <div style={{ display: "flex", gap: "3px" }}>
             {game &&
@@ -450,6 +456,7 @@ const Game: NextPage = () => {
           <h1>
             Player 2 Hand{" "}
             {game?.player2.id === playerID.current ? "(Yours)" : ""}
+            {player2ScoreRef.current ? " - Score: " + player2ScoreRef.current: ""}
           </h1>
           <div style={{ display: "flex", gap: "3px" }}>
             {game &&

@@ -1,7 +1,6 @@
 package main
 
 import "sort"
-import "fmt"
 import "encoding/json"
 import "math"
 
@@ -109,7 +108,7 @@ func getPermutations(sets [][]Card, index int, curPerm [][]Card, callback func(c
   getPermutations(sets, index + 1, picked, callback)
 }
 
-func findHandScore(hand []Card) []Card {
+func findHandScore(hand []Card) (int, [][]Card) {
 	var sets [][]Card
 	//first sorting hand by ca
 	sort.Slice(hand, func(i, j int) bool {
@@ -117,7 +116,7 @@ func findHandScore(hand []Card) []Card {
 	})
 	//now finding sets within those cards if there is three
 	for windowSize := 3; windowSize < len(hand); windowSize++ {
-		for j := 0; windowSize+j < len(hand); j++ {
+		for j := 0; windowSize+j <= len(hand); j++ {
 			aSet := hand[j : j+windowSize]
 			if isAllSameRank(aSet) {
 				aSetCopy := deepCopyHand(aSet)
@@ -134,10 +133,9 @@ func findHandScore(hand []Card) []Card {
 		return hand[i].Suit < hand[j].Suit
 	})
 
-	fmt.Println(hand)
 
 	for windowSize := 3; windowSize < len(hand); windowSize++ {
-		for j := 0; windowSize+j < len(hand); j++ {
+		for j := 0; windowSize+j <= len(hand); j++ {
 			aSet := hand[j : j+windowSize]
 			if isValidRun(aSet) {
 				aSetCopy := deepCopyHand(aSet)
@@ -157,15 +155,8 @@ func findHandScore(hand []Card) []Card {
     }
     if score < bestScore {
       bestScore = score
-      bestSet = cards
+      bestSet = append(cards, exclusedCards)
     }
   })
-  fmt.Println(bestScore, bestSet)
-
-
-	// for _, set := range sets {
-	// 	fmt.Println(set)
-	// }
-
-	return hand
+  return bestScore, bestSet
 }

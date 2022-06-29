@@ -92,6 +92,7 @@ type PlayerInfo struct {
 	ID       int    `json:"id"`
 	URL      string `json:"url"`
 	GameRoom string `json:"gameroom"`
+  Name string `json:"name"`
 }
 
 

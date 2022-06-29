@@ -20,21 +20,6 @@ func connectToGame(s *melody.Session) {
 	LOCK.Lock()
 	gameRoomName := strings.Split(s.Request.URL.Path, "/")[2]
 	gameRoomStatus := getGameRoomStatus(gameRoomName)
-  //I could also like make it so that the player when they try to join, first makes a API call to see if the room is open
-  //if filled, it just closes the connection quickly
-  //seems like the client does not know when their connection closes so like ??? 
-  // if gameRoomStatus == filled {
-  //   message := OutputData {MessageType: "meta", Command: "gameupdate", Content:"room was full"}
-  //   messageStr, err := json.Marshal(message)
-  //   if err != nil {
-  //     fmt.Println("Error: Invalid Json 5")
-  //     return
-  //   }
-  //   s.CloseWithMsg([]byte(messageStr))
-  //   return
-  // }
-
-
 
 	for _, info := range PLAYERS {
 		if s.Request.URL.Path == info.URL {
@@ -304,9 +289,17 @@ func handleGameMoves(s *melody.Session, msg []byte) {
 		var game Game
 		game = *GAMES[input.Player.GameRoom]
     game.Status = GameOver;
+    player1HandScore, player1HandOrdered := findHandScore(*game.Player1hand)
+    player2HandScore, player2HandOrdered := findHandScore(*game.Player2hand)
+    fmt.Println(player1HandOrdered, player2HandOrdered)
+    flatternOrderedP1Hand := flattenSets(player1HandOrdered)
+    flatternOrderedP2Hand := flattenSets(player2HandOrdered)
+    game.Player1hand = &flatternOrderedP1Hand
+    game.Player2hand = &flatternOrderedP2Hand
 		GAMES[input.Player.GameRoom] = &game
 		response.Game = *GAMES[input.Player.GameRoom]
     response.Command = GameOver;
+    response.Content = strconv.Itoa(player1HandScore) + " " + strconv.Itoa(player2HandScore)
   }
 
 	result, err := json.Marshal(response)

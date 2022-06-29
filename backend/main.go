@@ -244,5 +244,8 @@ func main() {
 	router.POST("/login", loginEndpoint)
 	router.POST("/signup", signupEndpoint)
   router.GET("/gameRoomQuery/:name", gameRoomQuery)
+  router.GET("/helloworld", func (c *gin.Context) {
+    c.JSON(200, gin.H{ "message": "hello world"})
+  })
 	router.Run("localhost:8080")
 }
