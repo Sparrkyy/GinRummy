@@ -163,7 +163,7 @@ const Game: NextPage = () => {
 
   useEffect(()=>{
     const w = window.location.href.split(":")
-    APIBASENAME.current = w[0] + ":" + w[1] + ":8080"
+    APIBASENAME.current = w[1] + ":8080"
   })
 
   const getGameRoomStatus = async (gameRoomName: string) => {
@@ -172,7 +172,7 @@ const Game: NextPage = () => {
       return
     }
     try {
-      const url = APIBASENAME.current + "/gameRoomQuery/" + gameRoomName
+      const url = "http:" + APIBASENAME.current + "/gameRoomQuery/" + gameRoomName
       console.log(url)
       const response = await axios.get(url);
       const jsonResponse = response.data;
@@ -205,7 +205,7 @@ const Game: NextPage = () => {
       return;
     }
 
-    const url = "ws://" + APIBASENAME.current + "/channel/" + roomName.current + "/play"
+    const url = "ws:" + APIBASENAME.current + "/channel/" + roomName.current + "/play"
     console.log(url)
     client.current = new W3CWebSocket(url);
 
