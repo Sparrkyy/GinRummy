@@ -8,6 +8,7 @@ import Alert from "react-bootstrap/Alert";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { w3cwebsocket as W3CWebSocket } from "websocket";
 import axios from "axios";
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
 enum GameRoomStatus {
   Lobby,
@@ -450,6 +451,36 @@ const Game: NextPage = () => {
     setSelectedCard(card);
   };
 
+  const reorder = (list: Card[], startIndex: number, endIndex: number) => {
+    const result = Array.from(list);
+    const [removed] = result.splice(startIndex, 1);
+    result.splice(endIndex, 0, removed);
+    return result;
+  };
+
+  const dndonDragEnd = (result: any) => {
+    if (!result.destination) {
+      console.log("no dest");
+      return;
+    }
+    if (!hand) {
+      console.log("no hand");
+      return;
+    }
+    const items = reorder(hand, result.source.index, result.destination.index);
+    setHand(items);
+  };
+
+  const getItemStyle = (isDragging: boolean, draggableStyle: any) => ({
+    // some basic styles to make the items look a bit nicer
+    userSelect: "none",
+    padding: 0,
+    margin: `0 ${10}px 0 0`,
+    border: isDragging ? "1px red solid" : "",
+    // styles we need to apply on draggables
+    ...draggableStyle,
+  });
+
   useEffect(() => {
     // if (!userInfo) {
     //   //I SHould really be checking wih the server and not simply if something exists duh
@@ -588,6 +619,50 @@ const Game: NextPage = () => {
                 </div>
               )}
             </div>
+            <DragDropContext onDragEnd={dndonDragEnd}>
+              <Droppable droppableId="droppable" direction="horizontal">
+                {(provided, snapshot) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    style={{ display: "flex" }}
+                  >
+                    {game &&
+                      hand &&
+                      hand.map((item, index) => (
+                        <Draggable
+                          key={stringifyCard(item)}
+                          draggableId={stringifyCard(item)}
+                          index={index}
+                        >
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              style={{
+                                border: areCardsEqual(item, selectedCard) ? "1px red solid": "",
+                                margin: `0 ${10}px 0 0`,
+                                borderRadius: "3px",
+                                ...provided.draggableProps.style
+                              }}
+                              onClick={()=>toggleSelectedCard(item)}
+                            >
+                              <img
+                                width="70"
+                                src={"/cards/" + stringifyCard(item) + ".png"}
+                                alt={stringifyCard(item)}
+                              />
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
+            {/*
             <div style={{ display: "flex", gap: "15px" }}>
               {game &&
                 playerID.current &&
@@ -616,6 +691,7 @@ const Game: NextPage = () => {
                   );
                 })}
             </div>
+            */}
           </div>
           {game && playerID.current && getTurnByID(game, playerID.current) && (
             <div
