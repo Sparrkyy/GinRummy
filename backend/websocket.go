@@ -94,37 +94,40 @@ func connectToGame(s *melody.Session) {
 
 func leaveGame(s *melody.Session) {
 	LOCK.Lock()
-
 	//removing player if they belong to a game
-	successfulRemoval := false
-	for _, game := range GAMES {
-		if game.Player1.ID == PLAYERS[s].ID {
-			var newPlayer = new(PlayerInfo)
-			game.Player1 = *newPlayer
-			successfulRemoval = true
-			if game.Player2.ID == 0 {
-				delete(GAMES, game.Name)
-			}
-			break
-		}
-		if game.Player2.ID == PLAYERS[s].ID {
-			var newPlayer = new(PlayerInfo)
-			game.Player2 = *newPlayer
-			successfulRemoval = true
-			if game.Player1.ID == 0 {
-				delete(GAMES, game.Name)
-			}
-			break
-		}
-	}
-	if !successfulRemoval {
-		fmt.Println("Error: failure to remove player: " + strconv.Itoa(PLAYERS[s].ID))
-	}
-	msg := []byte("disconnect " + strconv.Itoa(PLAYERS[s].ID))
-	MROUTER.BroadcastFilter(msg, func(q *melody.Session) bool {
-		return q.Request.URL.Path == s.Request.URL.Path
-	})
-	delete(PLAYERS, s)
+  disPlayer := PLAYERS[s]
+  otherplayerID := 0 
+  var theGame Game
+  for _,game := range GAMES {
+    if game.Player1.ID == disPlayer.ID {
+      theGame = *game;
+      otherplayerID = game.Player2.ID
+      break
+    }
+    if game.Player2.ID == disPlayer.ID {
+      theGame = *game;
+      otherplayerID = game.Player1.ID
+      break
+    }
+  }
+  if otherplayerID != 0 {
+    for i, player := range PLAYERS {
+      if player.ID == otherplayerID {
+        message := OutputData{MessageType:"meta", Command: "playerdisconnect"}
+        strMessage, err := json.Marshal(message)
+        if err != nil{
+          fmt.Println("There was an Error Formatting JSON")
+          return
+        }
+        i.Write(strMessage)
+        i.Close()
+        delete(PLAYERS, i)
+      }
+    }
+  }
+  s.Close()
+  delete(PLAYERS, s)
+  delete(GAMES,theGame.Name)
 	LOCK.Unlock()
 }
 
