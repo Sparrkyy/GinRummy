@@ -119,6 +119,10 @@ const getTurnByID = (game: Game, yourID: number) => {
   return yourID === game.turn;
 };
 
+const isPlayerDisconnect = (data: InputData) => {
+  return data.messagetype === "meta" && data.command === "playerdisconnect";
+};
+
 const getHandByID = (game: Game, yourID: number) => {
   if (yourID === game.player1.id) {
     return game.player1hand;
@@ -162,6 +166,23 @@ const Game: NextPage = () => {
   const player1ScoreRef = useRef<null | string>(null);
   const player2ScoreRef = useRef<null | string>(null);
   const APIBASENAME = useRef<string | null>(null);
+
+  const resetGameStatus = () => {
+    setGameStatus(GameRoomStatus.Lobby);
+    setGame(null);
+    roomName.current = null;
+    playerName.current = null;
+    playerID.current = null;
+    opponentID.current = null;
+    client.current = null;
+    setSelectedCard(null);
+    setHand(null);
+    dragCard.current = null;
+    dragOverCard.current = null;
+    player1ScoreRef.current = null;
+    player2ScoreRef.current = null;
+    playerName;
+  };
 
   useEffect(() => {
     const w = window.location.href.split(":");
@@ -256,6 +277,11 @@ const Game: NextPage = () => {
           setGame(data.game);
         }
 
+        if (data && isPlayerDisconnect(data)) {
+          setFadedWarning("Error: Other Player Disconnected");
+          resetGameStatus();
+        }
+
         if (data && isGameOverNotification(data)) {
           console.log("Game End!!");
           setGameStatus(GameRoomStatus.GameOver);
@@ -278,7 +304,6 @@ const Game: NextPage = () => {
       };
     }
   };
-
 
   const drawCard = (playerinfo: PlayerInfo, option: string) => {
     const response: OutputData = {
